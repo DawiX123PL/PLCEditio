@@ -1,0 +1,21 @@
+
+# build path
+/build
+
+
+# cmake
+/CMakeFiles
+/cmake_install.cmake
+/CMakeCache.txt
+
+
+# visual studio
+/*.vcxproj.user
+/*.vcxproj.filters
+/*.vcxproj
+/*.sln
+/x64
+/*.dir
+/.vs
+
+
