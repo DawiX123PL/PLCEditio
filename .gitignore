@@ -9,6 +9,14 @@
 /CMakeCache.txt
 
 
+# vscode
+/.vscode
+
+
+# imgui layout
+/imgui.ini
+
+
 # visual studio
 /*.vcxproj.user
 /*.vcxproj.filters
