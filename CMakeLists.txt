@@ -24,6 +24,8 @@ add_executable(PLCEditio
             ${IMGUI}
             "./src/main.cpp"
             "./src/app.hpp"
+            "./src/dockspace.cpp"
+            "./src/dockspace.hpp"
             )
 
 add_subdirectory("libs/glfw")
@@ -36,6 +38,12 @@ target_link_libraries(PLCEditio OpenGL::GL)
 
 target_link_libraries(PLCEditio glfw ${GLFW_LIBRARIES})
 target_link_libraries(PLCEditio glfw ${OPENGL_glu_LIBRARY} ${GLFW_LIBRARIES})
+
+
+
+target_compile_definitions(PLCEditio PRIVATE PLC_EDITIO_WINDOW_NAME="PLC Editio" )
+
+
 
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)

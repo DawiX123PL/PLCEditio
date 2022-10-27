@@ -56,7 +56,7 @@ int main(){
 #endif
 
 
-    const char* window_title = "ExampleWindow";
+    const char* window_title = PLC_EDITIO_WINDOW_NAME;
     GLFWwindow* window = glfwCreateWindow(500, 500, window_title, nullptr, nullptr );
     if(!window){
         std::cout << "Cound not create window object\n";
