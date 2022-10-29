@@ -1,0 +1,9 @@
+{
+    "name":"INPUT",
+    "inputs":[
+        
+    ],
+    "outputs":[
+        {"label": "i1", "type": "bool"}
+    ]
+}

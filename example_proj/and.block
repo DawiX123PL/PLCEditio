@@ -1,0 +1,11 @@
+{
+    "name":"AND",
+    "inputs":[
+        {"label": "A", "type": "bool"},
+        {"label": "B", "type": "bool"}
+    ],
+    "outputs":[
+        {"label": "Q", "type": "bool"},
+        {"label": "nQ", "type": "bool"}
+    ]
+}

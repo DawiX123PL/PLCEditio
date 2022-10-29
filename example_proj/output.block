@@ -1,0 +1,9 @@
+{
+    "name":"OUTPUT",
+    "inputs":[
+        {"label": "o1", "type": "bool"}
+    ],
+    "outputs":[
+        
+    ]
+}

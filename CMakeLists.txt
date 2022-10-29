@@ -26,8 +26,8 @@ add_executable(PLCEditio
             "./src/app.hpp"
             "./src/dockspace.cpp"
             "./src/dockspace.hpp"
-            # "./src/schematic.cpp"
-            # "./src/schematic.hpp"
+            "./src/schematic.cpp"
+            "./src/schematic.hpp"
             "./src/status_bar.cpp"
             "./src/status_bar.hpp"
             )
