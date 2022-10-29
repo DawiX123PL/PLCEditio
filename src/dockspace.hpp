@@ -1,4 +1,4 @@
 #pragma once
 
-void ShowDockspace();
+void ShowDockspace(int distance_from_bottom);
 

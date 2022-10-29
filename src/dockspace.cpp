@@ -4,7 +4,7 @@
 
 
 
-void ShowDockspace(){
+void ShowDockspace(int distance_from_bottom){
 
     
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -21,9 +21,14 @@ void ShowDockspace(){
         | ImGuiWindowFlags_NoNavFocus
         | ImGuiWindowFlags_NoDecoration;
 
+
+    ImVec2 size = viewport->WorkSize;
+    size.y -= distance_from_bottom;
+
     ImGui::SetNextWindowPos(viewport->WorkPos);
-    ImGui::SetNextWindowSize(viewport->WorkSize);
+    ImGui::SetNextWindowSize(size);
     ImGui::SetNextWindowViewport(viewport->ID);
+
 
     bool open = true;
     ImGui::Begin("Dockspace", &open, window_flags);
