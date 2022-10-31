@@ -23,9 +23,23 @@ int ShowStatusBar() {
     ImGui::Begin("StatusBar", &show, window_flags);
 
     
-    ImGui::Text("Status Bar");
-    ImGui::SameLine(ImGui::GetColumnWidth() - ImGui::CalcTextSize("Witam Pana 1234567890").x);
-    ImGui::Text("Witam Pana 1234567890");
+    
+    //ImGui::SameLine(ImGui::GetColumnWidth() - ImGui::CalcTextSize("Witam Pana 1234567890").x);
+    
+
+    ImGui::BeginTable("StatusBarTable", 2, ImGuiTableFlags_BordersV);
+
+    ImGui::TableSetupColumn("##COL1");
+    ImGui::TableSetupColumn("##COL2",  ImGuiTableColumnFlags_WidthMask_ ^ ImGuiTableColumnFlags_WidthStretch);
+
+    ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+            ImGui::Text("Status Bar");
+
+        ImGui::TableSetColumnIndex(1);
+            ImGui::Text("Witam Pana 1234567890");
+
+    ImGui::EndTable();
 
 
     // set window pos and size

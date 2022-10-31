@@ -30,6 +30,8 @@ add_executable(PLCEditio
             "./src/schematic.hpp"
             "./src/status_bar.cpp"
             "./src/status_bar.hpp"
+            "./src/debug_console.cpp"
+            "./src/debug_console.hpp"
             )
 
 add_subdirectory("libs/glfw")
