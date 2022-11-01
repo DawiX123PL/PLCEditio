@@ -1,10 +1,11 @@
 #pragma once
 
+#include <imgui.h>
 #include "dockspace.hpp"
 #include "status_bar.hpp"
 #include "debug_console.hpp"
-#include <imgui.h>
-
+#include "schematic.hpp"
+#include "schematic_editor.hpp"
 
 
 
@@ -13,15 +14,30 @@ class App{
 public:
     
     bool show_demo_window = false;
+    bool show_project_tree_window = true;
+
     bool show_file_select_dialog = false;
     bool show_PLC_connection_dialog = false;
 
-    DebugConsole console;
+    DebugLogger PLC_connection_log;
+
+    DebugLogger event_log;
+    
+    Schematic mainSchematic;
+
+    SchematicEditor schematic_editor;
 
 
-    App():
-        console("PLC Message Log") 
+    App() :
+        PLC_connection_log("PLC Message Log"),
+        event_log("Event Log"),
+        schematic_editor("Schematic Editor")
     {
+        schematic_editor.Show(true);
+
+        event_log.Show(true);
+        PLC_connection_log.Show(true);
+
         for (int i = 0; i < file_path_max_len; i++)
             file_path[i] = '\0';
     };
@@ -34,17 +50,18 @@ public:
         ShowDockspace(status_bar_size);
         ShowMainMenu();
 
-        console.Render();
+        PLC_connection_log.Render();
+        event_log.Render();
+        schematic_editor.Render();
 
+        //if (show_demo_window) 
+        //    PLC_connection_log.PushBack(DebugLogger::Priority::INFO ,"XDDDDD");
 
-        if (show_demo_window) 
-            console.PushBack(DebugConsole::Priority::INFO ,"XDDDDD");
+        //if (show_file_select_dialog)
+        //    PLC_connection_log.PushBack(DebugLogger::Priority::WARNING, "XDDDDD");
 
-        if (show_file_select_dialog)
-            console.PushBack(DebugConsole::Priority::WARNING, "XDDDDD");
-
-        if (show_PLC_connection_dialog)
-            console.PushBack(DebugConsole::Priority::ERROR, "XDDDDD");
+        //if (show_PLC_connection_dialog)
+        //    PLC_connection_log.PushBack(DebugLogger::Priority::ERROR, "XDDDDD");
 
 
         ImGui::Begin("Window1");
@@ -61,6 +78,9 @@ public:
         if (show_PLC_connection_dialog)
             PLCConnectionDialog();
 
+        if (show_project_tree_window)
+            ProjectTreeWindow();
+
     }
 
 private:
@@ -68,17 +88,20 @@ private:
     void ShowMainMenu() {
         ImGui::BeginMainMenuBar();
         if (ImGui::BeginMenu("File")) {
-
             if (ImGui::MenuItem("Open Project")) show_file_select_dialog = true;
-
             ImGui::EndMenu();
         }
 
         if (ImGui::BeginMenu("PLC")) {
+            if (ImGui::MenuItem("Connection", nullptr, show_PLC_connection_dialog)) show_PLC_connection_dialog = !show_PLC_connection_dialog;
+            if (ImGui::MenuItem("Message Log", nullptr, PLC_connection_log.IsShown())) PLC_connection_log.Show(!PLC_connection_log.IsShown());
+            ImGui::EndMenu();
+        }
 
-            if (ImGui::MenuItem("Connection")) show_PLC_connection_dialog = true;
-            if (ImGui::MenuItem("Message Log")) console.Show(true);
-
+        if (ImGui::BeginMenu("Window")) {
+            if (ImGui::MenuItem("Event Log", nullptr, event_log.IsShown())) event_log.Show(!event_log.IsShown());
+            ImGui::Separator();
+            if (ImGui::MenuItem("Project Tree", nullptr, show_project_tree_window)) show_project_tree_window = !show_project_tree_window;
             ImGui::EndMenu();
         }
 
@@ -120,13 +143,19 @@ private:
             ImGui::InputText("Path", file_path, file_path_max_len);
        
             if(ImGui::Button("Cancel")) show_file_select_dialog = false;
-            ImGui::Button("Open");
+            
+            if(ImGui::Button("Open")) LoadProj(file_path);
+
+
         }
         ImGui::End();
     }
 
-    void LoadProj() {
 
+    void LoadProj(const char* file_path) {
+        Schematic::Error err = mainSchematic.LoadFromJsonFile(file_path);
+        if (err == Schematic::Error::OK) event_log.PushBack(DebugLogger::Priority::INFO, "Project loaded succesfully");
+        else event_log.PushBack(DebugLogger::Priority::ERROR, Schematic::ErrorToStr(err));
     }
 
 
@@ -176,6 +205,18 @@ private:
     }
 
 
+    void ProjectTreeWindow() {
+
+        if (ImGui::Begin("Project Tree", &show_project_tree_window)) {
+
+
+                
+
+
+        }
+        ImGui::End();
+
+    }
 
 
 

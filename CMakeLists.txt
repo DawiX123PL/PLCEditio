@@ -20,8 +20,25 @@ set(IMGUI
     "./libs/imgui/backends/imgui_impl_opengl3.cpp"
     )
 
+set(IMGUI_NODE_EDITOR
+    "./libs/imgui-node-editor/crude_json.cpp"
+    "./libs/imgui-node-editor/crude_json.h"
+    "./libs/imgui-node-editor/imgui_bezier_math.h"
+    "./libs/imgui-node-editor/imgui_bezier_math.inl"
+    "./libs/imgui-node-editor/imgui_canvas.cpp"
+    "./libs/imgui-node-editor/imgui_canvas.h"
+    "./libs/imgui-node-editor/imgui_extra_math.h"
+    "./libs/imgui-node-editor/imgui_extra_math.inl"
+    "./libs/imgui-node-editor/imgui_node_editor.cpp"
+    "./libs/imgui-node-editor/imgui_node_editor.h"
+    "./libs/imgui-node-editor/imgui_node_editor_api.cpp"
+    "./libs/imgui-node-editor/imgui_node_editor_internal.h"
+    "./libs/imgui-node-editor/imgui_node_editor_internal.inl"
+    )
+
 add_executable(PLCEditio 
-            ${IMGUI}
+            ${IMGUI} 
+            ${IMGUI_NODE_EDITOR}
             "./src/main.cpp"
             "./src/app.hpp"
             "./src/dockspace.cpp"
@@ -32,6 +49,9 @@ add_executable(PLCEditio
             "./src/status_bar.hpp"
             "./src/debug_console.cpp"
             "./src/debug_console.hpp"
+            "./src/schematic_editor.cpp"
+            "./src/schematic_editor.hpp"
+            "./src/window_object.hpp"
             )
 
 add_subdirectory("libs/glfw")
@@ -39,7 +59,7 @@ include_directories("libs/glfw/include")
 include_directories("libs/imgui")
 include_directories("libs/imgui/backends")
 include_directories("libs/boost")
-include_directories("libs/imgui-node-editor/NodeEditor/Include")
+include_directories("libs/imgui-node-editor")
 
 
 find_package(OpenGL REQUIRED)

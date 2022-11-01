@@ -7,15 +7,10 @@
 #include <iomanip>
 #include <ctime>
 
+#include "window_object.hpp"
 
 
-
-class DebugConsole{
-
-    
-    
-    std::string window_name;
-    bool show;
+class DebugLogger : public WindowObject{
 
     bool auto_scroll;
 
@@ -39,11 +34,8 @@ private:
 
 
 public:
-    DebugConsole(std::string name): window_name(name), show (false) {}
+    DebugLogger(std::string name): WindowObject(name){}
 
-    void Show(bool s){
-        show = s;
-    }
 
     void PushBack(Priority p, std::string msg) {
 
@@ -57,7 +49,7 @@ public:
     }
 
 
-    void Render(){
+    void Render() override {
         if (!show) return;
 
         if(ImGui::Begin(window_name.c_str(), &show)){

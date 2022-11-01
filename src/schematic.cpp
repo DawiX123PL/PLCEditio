@@ -1,6 +1,7 @@
 #include "schematic.hpp"
 #include <boost/json.hpp>
 
+#include <vector>
 
 
 
@@ -23,7 +24,41 @@ Schematic::Error Schematic::LoadFromJsonFile(std::string path) {
 
 	if (err) return Error::JSON_PARSING_ERROR;
 
-	return ParseJson(js);
+
+	std::vector<Block> blocks_raw;
+	std::vector<ConnectionRaw> connections_raw;
+
+	Error err1 = ParseJson(js,&blocks_raw, &connections_raw);
+
+	if (err1 != Error::OK) return err1;
+
+
+	blocks.clear();
+	connetions.clear();
+
+	// convert blocks to valid representation
+	for (const auto& block_raw : blocks_raw) {
+		blocks.push_back(std::make_shared<Block>(block_raw));
+	}
+
+	// convert connectons to valid internal representation
+	for (const auto& conn_raw : connections_raw) {
+
+		std::weak_ptr<Block> src_ptr;
+		std::weak_ptr<Block> dst_ptr;
+
+		// find blocks with specified indexes
+		for (const auto& block_ptr : blocks) {
+			if (conn_raw.src == block_ptr.get()->id) src_ptr = block_ptr;
+			if (conn_raw.dst == block_ptr.get()->id) dst_ptr = block_ptr;
+		}
+
+		connetions.emplace_back(src_ptr, conn_raw.src_pin, dst_ptr, conn_raw.dst_pin);
+
+	}
+
+
+	return Error::OK;
 
 }
 
@@ -62,13 +97,13 @@ Schematic::Error Schematic::LoadFile(std::string path, std::string* result) {
 
 
 
-Schematic::Error Schematic::ParseJson(const boost::json::value& js) {
+Schematic::Error Schematic::ParseJson(const boost::json::value& js, std::vector<Block>* blocks_raw, std::vector<ConnectionRaw>* connections_raw) {
 
 	if (!js.is_object()) return Error::JSON_NOT_AN_OBJECT;
 
 	auto js_obj = js.as_object();
 
-
+	// blocks 
 	if (auto js_blocks = js_obj.if_contains("blocks")) {
 
 		if (auto js_blocks_list = js_blocks->if_array()) {
@@ -77,6 +112,7 @@ Schematic::Error Schematic::ParseJson(const boost::json::value& js) {
 
 				Block block;
 				ParseJsonBlock(js_blocks_list->at(i), &block);
+				blocks_raw->push_back(block);
 			}
 
 		}
@@ -84,6 +120,28 @@ Schematic::Error Schematic::ParseJson(const boost::json::value& js) {
 
 	}
 	else { return Error::JSON_MISSING_BLOCKS_FIELD; }
+
+
+	// connections
+	if (auto js_connections = js_obj.if_contains("connections")) {
+
+		if (auto js_connections_list = js_connections->if_array()) {
+
+			for (int i = 0; i < js_connections_list->size(); i++) {
+
+				ConnectionRaw conn;
+				ParseJsonConnection(js_connections_list->at(i), &conn);
+				connections_raw->push_back(conn);
+			}
+
+		}
+		else { return Error::JSON_BLOCKS_FIELD_NOT_ARRAY; }
+
+	}
+	else { return Error::JSON_MISSING_BLOCKS_FIELD; }
+
+
+
 
 	return Error::OK;
 }
@@ -169,7 +227,7 @@ Schematic::Error Schematic::ParseJsonBlock(const boost::json::value& js, Block* 
 
 
 
-Schematic::Error Schematic::ParseJsonConnection(const boost::json::value& js) {
+Schematic::Error Schematic::ParseJsonConnection(const boost::json::value& js, ConnectionRaw* conn) {
 	if (!js.is_object())
 		return Error::JSON_CONNECTION_NOT_AN_OBJECT;
 
@@ -190,33 +248,32 @@ Schematic::Error Schematic::ParseJsonConnection(const boost::json::value& js) {
 		return -1;
 	};
 
-	ConnectionRaw conn;
-
+	
 	// src
 	if (auto js_num = js_obj.if_contains("src")) {
-		if (IsInt(js_num)) conn.src = GetInt(js_num);
+		if (IsInt(js_num)) conn->src = GetInt(js_num);
 		else return Error::JSON_CONNECTION_INVALID_SRC;
 	}
 
 	// src_pin
 	if (auto js_num = js_obj.if_contains("src_pin")) {
-		if (IsInt(js_num)) conn.src = GetInt(js_num);
+		if (IsInt(js_num)) conn->src = GetInt(js_num);
 		else return Error::JSON_CONNECTION_INVALID_SRCPIN;
 	}
 
 	// src
 	if (auto js_num = js_obj.if_contains("dst")) {
-		if (IsInt(js_num)) conn.src = GetInt(js_num);
+		if (IsInt(js_num)) conn->src = GetInt(js_num);
 		else return Error::JSON_CONNECTION_INVALID_DST;
 	}
 
 	// src_pin
 	if (auto js_num = js_obj.if_contains("dst_pin")) {
-		if (IsInt(js_num)) conn.src = GetInt(js_num);
+		if (IsInt(js_num)) conn->src = GetInt(js_num);
 		else return Error::JSON_CONNECTION_INVALID_DSTPIN;
 	}
 
-	if (!conn.IsValid())
+	if (!conn->IsValid())
 		return Error::JSON_CONNECTION_IS_INVALID;
 
 	return Error::OK;
