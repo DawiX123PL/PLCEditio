@@ -8,7 +8,7 @@
 #include "schematic.hpp"
 #include "schematic_editor.hpp"
 #include "schematic_block.hpp"
-
+#include "block_editor.hpp"
 
 
 class App{
@@ -27,8 +27,10 @@ public:
     Schematic mainSchematic;
     std::list<std::shared_ptr<BlockData>> library;
 
+    std::list<BlockEditor> block_editors;
     SchematicEditor schematic_editor;
 
+  
 
     App() :
         PLC_connection_log("PLC Message Log"),
@@ -55,6 +57,8 @@ public:
         PLC_connection_log.Render();
         event_log.Render();
         schematic_editor.Render();
+
+        for(auto& editor: block_editors) editor.Render();
 
         //if (show_demo_window) 
         //    PLC_connection_log.PushBack(DebugLogger::Priority::INFO ,"XDDDDD");
@@ -107,7 +111,6 @@ private:
             ImGui::EndMenu();
         }
 
-
         if (ImGui::BeginMenu("DevOptions")) {
 
             if (ImGui::MenuItem("Show Demo Window", nullptr, show_demo_window)) show_demo_window = !show_demo_window;
@@ -146,8 +149,10 @@ private:
        
             if(ImGui::Button("Cancel")) show_file_select_dialog = false;
             
-            if(ImGui::Button("Open")) LoadProj(file_path);
-
+            if (ImGui::Button("Open")) {
+                LoadProj(file_path);
+                show_file_select_dialog = false;
+            }
 
         }
         ImGui::End();
@@ -174,6 +179,7 @@ private:
     }
 
 
+
     struct PLC_IP {
         //  ip1.ip2.ip3.ip4:port
         char ip1[4];
@@ -188,7 +194,6 @@ private:
                 port[i] = 0;
         }
     }PLC_ip;
-
 
 
     void PLCConnectionDialog() {
@@ -224,7 +229,50 @@ private:
 
         if (ImGui::Begin("Project Tree", &show_project_tree_window)) {
 
+            std::string tree_name;
+            try {
+                if (mainSchematic.Path().empty()) {
+                    tree_name = "Untitled##PROJECT_TREE";
+                }
+                else { 
+                    tree_name = mainSchematic.Path().stem().string() + "##PROJECT_TREE";
+                }
+            }catch(...){
+                tree_name = "????????????????";
+            }
+            
+            if (ImGui::TreeNode(tree_name.c_str())) {
 
+                ImGui::TreeNodeEx("Schematic", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
+
+
+                if (ImGui::TreeNode("Blocks")) {
+                    for (const auto& block : library) {
+
+                        std::string name = block->Name() + "##block";
+                        ImGui::TreeNodeEx(name.c_str(), ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
+                        // open editor window
+                        if(ImGui::IsItemClicked()){
+
+                            // check if editor is opened
+                            bool isOpen = false;
+                            for (auto& ed : block_editors) {
+                                if (ed.IsSameBlockAs(block)) {
+                                    isOpen = true;
+                                    ed.Show(true);
+                                    break;
+                                }
+                            }
+                            // open new editor if needed
+                            if(!isOpen)
+                                block_editors.emplace_back(block);
+                        }
+
+                    }
+                    ImGui::TreePop();
+                }
+                ImGui::TreePop();
+            }
                 
 
 

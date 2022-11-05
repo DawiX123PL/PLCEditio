@@ -13,19 +13,24 @@
 
 class BlockData{
 
+public:
     struct IO{
         std::string label;
         std::string type;
+        IO()
+            : label(), type() {}; 
+
         IO(std::string _label, std::string _type)
             : label(_label), type(_type) {}; 
     };
+
+private:
 
     std::string name;
     std::string path;
 
     std::vector<IO> inputs;
     std::vector<IO> outputs;
-
 
     inline int max(int a, int b){
         return a > b ? a : b; 
@@ -34,6 +39,20 @@ class BlockData{
     static constexpr float pin_icon_size = 24; 
 
 public:
+
+    const std::string& Name(){ return name; };
+    const std::string& Path(){ return path; };
+    const std::vector<IO>& Inputs(){ return inputs; };
+    const std::vector<IO>& Outputs(){ return outputs; };
+
+
+    void SetName(const std::string& _name){ name = _name; };
+    void SetPath(const std::string& _path){ path = _path; };
+    void SetInputs(const std::vector<IO>& _inputs){ inputs = _inputs; };
+    void SetOutputs(const std::vector<IO>& _outputs){ outputs = _outputs; };
+
+
+
 
 
     // TODO: CHANGE INDEXING LATER
@@ -44,14 +63,18 @@ public:
     // input_id  = id << 8 + 127 + output_number;
     //
 
-    void Render(int id){
+    ax::NodeEditor::NodeId Render(int id){
 
         int node_id = id << 8;
         int input_id = id << 8;
         int output_id = id << 8 + 127;
 
-
         ax::NodeEditor::BeginNode(node_id);
+
+        ImGui::TextUnformatted(name.c_str());
+        ImGui::Dummy(ImVec2(0, 28));
+
+        
 
         for(const auto& i_pin: inputs){
             ax::NodeEditor::BeginPin(input_id++, ax::NodeEditor::PinKind::Input);
@@ -75,6 +98,8 @@ public:
 
 
         ax::NodeEditor::EndNode();
+
+        return node_id;
     }
 
 

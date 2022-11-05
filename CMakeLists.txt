@@ -18,6 +18,8 @@ set(IMGUI
     "./libs/imgui/imstb_truetype.h"
     "./libs/imgui/backends/imgui_impl_glfw.cpp"
     "./libs/imgui/backends/imgui_impl_opengl3.cpp"
+    "./libs/imgui/misc/cpp/imgui_stdlib.cpp"
+    "./libs/imgui/misc/cpp/imgui_stdlib.h"
     )
 
 set(IMGUI_NODE_EDITOR
@@ -54,6 +56,8 @@ add_executable(PLCEditio
             "./src/schematic_editor.cpp"
             "./src/schematic_editor.hpp"
             "./src/window_object.hpp"
+            "./src/block_editor.cpp"
+            "./src/block_editor.hpp"
             )
 
 add_subdirectory("libs/glfw")
