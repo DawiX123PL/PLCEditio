@@ -15,7 +15,7 @@ class Schematic {
 
 
 	struct Block {
-		std::weak_ptr<Block_Element> lib_block;
+		std::weak_ptr<BlockData> lib_block;
 		int id;
 		std::string src;
 		enum class Location{PROJECT, STD, EXTERNAL} location;
@@ -58,7 +58,7 @@ class Schematic {
 
 	std::list<std::shared_ptr<Block>> blocks;
 	std::list<Connection> connetions;
-	std::filesystem::path project_path;
+	std::filesystem::path path;
 
 
 public:
@@ -69,8 +69,11 @@ public:
 		CANNOT_OPEN_FILE,
 		JSON_PARSING_ERROR,
 		JSON_NOT_AN_OBJECT,
+
 		JSON_MISSING_BLOCKS_FIELD,
 		JSON_BLOCKS_FIELD_NOT_ARRAY,
+		JSON_CONNECTIONS_FIELD_NOT_ARRAY,
+		JSON_MISSING_CONNECTIONS_FIELD,
 
 		JSON_BLOCK_NOT_AN_OBJECT,
 		JSON_BLOCK_MISSING_ID,
@@ -93,87 +96,17 @@ public:
 
 	};
 
-	static const char* ErrorToStr(Error err) {
-		switch (err) {
-		case Error::OK: return "OK";
-		case Error::CANNOT_OPEN_FILE: return "CANNOT_OPEN_FILE";
-		case Error::JSON_PARSING_ERROR: return "JSON_PARSING_ERROR";
-		case Error::JSON_NOT_AN_OBJECT: return "JSON_NOT_AN_OBJECT";
-		case Error::JSON_MISSING_BLOCKS_FIELD: return "JSON_MISSING_BLOCKS_FIELD";
-		case Error::JSON_BLOCKS_FIELD_NOT_ARRAY: return "JSON_BLOCKS_FIELD_NOT_ARRAY";
-		case Error::JSON_BLOCK_NOT_AN_OBJECT: return "JSON_BLOCK_NOT_AN_OBJECT";
-		case Error::JSON_BLOCK_MISSING_ID: return "JSON_BLOCK_MISSING_ID";
-		case Error::JSON_BLOCK_INVALID_ID: return "JSON_BLOCK_INVALID_ID";
-		case Error::JSON_BLOCK_MISSING_POS: return "JSON_BLOCK_MISSING_POS";
-		case Error::JSON_BLOCK_POS_NOT_ARRAY: return "JSON_BLOCK_POS_NOT_ARRAY";
-		case Error::JSON_BLOCK_INVALID_POS: return "JSON_BLOCK_INVALID_POS";
-		case Error::JSON_BLOCK_MISSING_SRC: return "JSON_BLOCK_MISSING_SRC";
-		case Error::JSON_BLOCK_POS_NOT_STRING: return "JSON_BLOCK_POS_NOT_STRING";
-		case Error::JSON_BLOCK_MISSING_LOC: return "JSON_BLOCK_MISSING_LOC";
-		case Error::JSON_BLOCK_LOC_NOT_STRING: return "JSON_BLOCK_LOC_NOT_STRING";
-		case Error::JSON_BLOCK_INVALID_LOC: return "JSON_BLOCK_INVALID_LOC";
-		case Error::JSON_CONNECTION_NOT_AN_OBJECT: return "JSON_CONNECTION_NOT_AN_OBJECT";
-		case Error::JSON_CONNECTION_IS_INVALID: return "JSON_CONNECTION_IS_INVALID";
-		case Error::JSON_CONNECTION_INVALID_SRC: return "JSON_CONNECTION_INVALID_SRC";
-		case Error::JSON_CONNECTION_INVALID_SRCPIN: return "JSON_CONNECTION_INVALID_SRCPIN";
-		case Error::JSON_CONNECTION_INVALID_DST: return "JSON_CONNECTION_INVALID_DST";
-		case Error::JSON_CONNECTION_INVALID_DSTPIN: return "JSON_CONNECTION_INVALID_DSTPIN";
-		default: return "Unnown Error";
-		}
-	}
+	std::filesystem::path Path(){ return path; }
+
+	static const char* ErrorToStr(Error err);
 
 	Error LoadFromJsonFile(std::string path);
 
-
-	// TODO: finish this function ASAP
-	void LoadProjectLibrary(){
-
-		std::list<Block_Element> library;
-
-		std::filesystem::path project_root = project_path.parent_path();
-
-		std::filesystem::directory_iterator dir(project_root);
-
-		for(const auto& dir_entry : dir){
-			if(!dir_entry.is_directory()) continue;
-			if(dir_entry.path().extension() != ".block") continue;
-
-			std::cout << "Load dir : " << dir_entry.path() << "\n";
-
-			const auto lib_block_name = dir_entry.path().stem().append(".json");
-			std::cout << "Stem : " << lib_block_name << "\n";
-
-			const auto block_desc_file_path = dir_entry.path() / lib_block_name;
-			std::filesystem::directory_entry block_desc_file(block_desc_file_path);
-
-			if(!block_desc_file.is_regular_file()){
-
-				std::string block_desc_path_str;
-				try{
-					block_desc_path_str = block_desc_file_path.string();
-				}catch(...){
-					continue;
-				}
-
-				library.emplace_back();
-				library.back().FromJsonFile(block_desc_path_str);
-
-			}
-			
-		}
-
-	}
-
-
-
 private:
-	Error LoadFile(std::string path, std::string* result);
-	Error ParseJson(const boost::json::value& js, std::vector<Block>* blocks_raw, std::vector<ConnectionRaw>* connection_raw_list);
+	Error LoadFile(const std::filesystem::path& path, std::string* result);
+	Error ParseJson(const std::string& data_str);
 	Error ParseJsonBlock(const boost::json::value& js, Block* block);
 	Error ParseJsonConnection(const boost::json::value& js, ConnectionRaw* conn);
-
-
-
 
 };
 

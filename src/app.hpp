@@ -25,7 +25,7 @@ public:
     DebugLogger event_log;
     
     Schematic mainSchematic;
-    std::list<std::shared_ptr<Block_Element>> library;
+    std::list<std::shared_ptr<BlockData>> library;
 
     SchematicEditor schematic_editor;
 
@@ -156,8 +156,21 @@ private:
 
     void LoadProj(const char* file_path) {
         Schematic::Error err = mainSchematic.LoadFromJsonFile(file_path);
-        if (err == Schematic::Error::OK) event_log.PushBack(DebugLogger::Priority::INFO, "Project loaded succesfully");
-        else event_log.PushBack(DebugLogger::Priority::ERROR, Schematic::ErrorToStr(err));
+
+        if (err == Schematic::Error::OK) 
+            event_log.PushBack(DebugLogger::Priority::SUCCESS, "Project loaded succesfully");
+        else 
+            event_log.PushBack(DebugLogger::Priority::ERROR, Schematic::ErrorToStr(err));
+
+
+        std::list<BlockData> proj_lib;
+        auto proj_lib_path = mainSchematic.Path().parent_path();
+        BlockData::LoadProjectLibrary(&proj_lib, proj_lib_path);
+
+        for (auto& block_from_lib : proj_lib) {
+            library.push_back(std::make_shared<BlockData>(block_from_lib));
+        }
+
     }
 
 

@@ -4,20 +4,20 @@
 #include <vector>
 #include <string>
 #include <fstream>
+#include <filesystem>
 #include <boost/json.hpp>
 #include <imgui.h>
 #include <imgui_node_editor.h>
 // #include <utilities/widgets.h>
 
 
-class Block_Element{
+class BlockData{
 
     struct IO{
-        int id;
         std::string label;
         std::string type;
-        IO(int _id, const std::string& _label, const std::string& _type)
-            : id(_id), label(_label), type(_type) {}; 
+        IO(std::string _label, std::string _type)
+            : label(_label), type(_type) {}; 
     };
 
     std::string name;
@@ -88,18 +88,25 @@ public:
         JSON_NAME_NOT_A_STRING,
         JSON_MISSING_NAME_FIELD,
 
+        JSON_INPUTS_EL_LABEL_NOT_A_STRING,
+        JSON_INPUTS_EL_TYPE_NOT_A_STRING,
         JSON_INPUTS_EL_MISSING_LABEL,
         JSON_INPUTS_EL_MISSING_TYPE,
         JSON_INPUTS_EL_NOT_AN_OBJECT,
         JSON_INPUTS_NOT_AN_ARRAY,
         JSON_MISSING_INPUTS_FIELD,
 
+        JSON_OUTPUTS_EL_LABEL_NOT_A_STRING,
+        JSON_OUTPUTS_EL_TYPE_NOT_A_STRING,
         JSON_OUTPUTS_EL_MISSING_LABEL,
         JSON_OUTPUTS_EL_MISSING_TYPE,
         JSON_OUTPUTS_EL_NOT_AN_OBJECT,
         JSON_OUTPUTS_NOT_AN_ARRAY,
         JSON_MISSING_OUTPUTS_FIELD,
     };
+
+
+    static void LoadProjectLibrary(std::list<BlockData>* library, std::filesystem::path path);
 
     Error FromJsonFile(const std::string& _path);
 

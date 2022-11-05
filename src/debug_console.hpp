@@ -16,6 +16,7 @@ class DebugLogger : public WindowObject{
 
 public:
     enum class Priority {
+        SUCCESS,
         INFO,
         WARNING,
         ERROR,
@@ -31,6 +32,16 @@ private:
 
     std::vector<Data> log;
 
+
+    ImU32 GetPriorityColor(Priority prio){
+        switch (prio) {
+        case Priority::SUCCESS:  return IM_COL32(70,  255, 64,  255);
+        case Priority::INFO:     return IM_COL32(255, 255, 255, 255);
+        case Priority::WARNING:  return IM_COL32(255, 237, 74,  255);
+        case Priority::ERROR:    return IM_COL32(255, 74,  74,  255);
+        default:                 return IM_COL32(255, 255, 255, 255);
+        }
+    }
 
 
 public:
@@ -85,13 +96,7 @@ public:
 
                         ImGui::TableSetColumnIndex(1);
 
-                            switch (log[i].priority) {
-                            case Priority::INFO:     ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 255, 255, 255)); break;
-                            case Priority::WARNING:  ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 237, 74,  255)); break;
-                            case Priority::ERROR:    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 74,  74,  255)); break;
-                            default:                 ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 255, 255, 255)); break;
-                            }
-                    
+                            ImGui::PushStyleColor(ImGuiCol_Text, GetPriorityColor(log[i].priority));
                             ImGui::Text(log[i].msg.c_str());
                             ImGui::PopStyleColor();
 

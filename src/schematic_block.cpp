@@ -1,7 +1,7 @@
 #include "schematic_block.hpp"
 
 
-const char* Block_Element::ErrorToStr(Error err) {
+const char* BlockData::ErrorToStr(Error err) {
     switch (err)
     {
     case Error::OK: return "OK";
@@ -25,7 +25,8 @@ const char* Block_Element::ErrorToStr(Error err) {
 }
 
 
-Block_Element::Error Block_Element::FromJsonFile(const std::string &_path)
+
+BlockData::Error BlockData::FromJsonFile(const std::string &_path)
 {
     path = _path;
 
@@ -38,7 +39,9 @@ Block_Element::Error Block_Element::FromJsonFile(const std::string &_path)
     return err;
 }
 
-Block_Element::Error Block_Element::LoadFile(const std::string &path, std::string *result)
+
+
+BlockData::Error BlockData::LoadFile(const std::string &path, std::string *result)
 {
     try
     {
@@ -70,7 +73,9 @@ Block_Element::Error Block_Element::LoadFile(const std::string &path, std::strin
     }
 }
 
-Block_Element::Error Block_Element::ParseJson(const std::string &str)
+
+
+BlockData::Error BlockData::ParseJson(const std::string &str)
 {
 
     std::error_code err;
@@ -125,9 +130,16 @@ Block_Element::Error Block_Element::ParseJson(const std::string &str)
 
                     auto js_label_str = js_label->if_string();
                     auto js_type_str = js_type->if_string();
-                    
-                    // TODO: FIX THIS 
-                    // inputs.emplace_back(*js_label_str, *js_type_str);
+
+                    if (!js_label_str)
+                        return Error::JSON_INPUTS_EL_LABEL_NOT_A_STRING;
+                    if (!js_type_str)
+                        return Error::JSON_INPUTS_EL_TYPE_NOT_A_STRING;
+
+                    std::string label = js_label_str->c_str();
+                    std::string type  = js_type_str->c_str();
+
+                    inputs.emplace_back(label, type);
                 }
                 else
                     return Error::JSON_INPUTS_EL_NOT_AN_OBJECT;
@@ -160,11 +172,18 @@ Block_Element::Error Block_Element::ParseJson(const std::string &str)
                     if (!js_type)
                         return Error::JSON_OUTPUTS_EL_MISSING_TYPE;
 
-                    auto js_label_str = *js_label->if_string();
-                    auto js_type_str = *js_type->if_string();
+                    auto js_label_str = js_label->if_string();
+                    auto js_type_str = js_type->if_string();
 
-                    // TODO: FIX THIS
-                    //outputs.emplace_back(js_label_str, js_type_str);
+                    if (!js_label_str)
+                        return Error::JSON_OUTPUTS_EL_LABEL_NOT_A_STRING;
+                    if (!js_type_str)
+                        return Error::JSON_OUTPUTS_EL_TYPE_NOT_A_STRING;
+
+                    std::string label = js_label_str->c_str();
+                    std::string type  = js_type_str->c_str();
+
+                    outputs.emplace_back(label, type);
                 }
                 else
                     return Error::JSON_OUTPUTS_EL_NOT_AN_OBJECT;
@@ -175,4 +194,46 @@ Block_Element::Error Block_Element::ParseJson(const std::string &str)
     }
     else
         return Error::JSON_MISSING_OUTPUTS_FIELD;
+}
+
+
+
+// TODO: finish this function ASAP
+void BlockData::LoadProjectLibrary(std::list<BlockData>* library, std::filesystem::path path){
+
+    if(!library) return;
+    if (!std::filesystem::is_directory(path)) return;
+
+
+
+    std::filesystem::directory_iterator dir(path);
+
+    for(const auto& dir_entry : dir){
+        if(!dir_entry.is_directory()) continue;
+        if(dir_entry.path().extension() != ".block") continue;
+
+        std::cout << "Load dir : " << dir_entry.path() << "\n";
+
+        const auto lib_block_name = dir_entry.path().stem().concat(".json");
+        std::cout << "Stem : " << lib_block_name << "\n";
+
+        const auto block_desc_file_path = dir_entry.path() / lib_block_name;
+        std::filesystem::directory_entry block_desc_file(block_desc_file_path);
+
+
+        if (!block_desc_file.is_regular_file()) continue;
+
+        std::string block_desc_path_str;
+        try{
+            block_desc_path_str = block_desc_file_path.string();
+        }catch(...){
+            continue;
+        }
+
+        library->emplace_back();
+        library->back().FromJsonFile(block_desc_path_str);
+
+        
+    }
+
 }

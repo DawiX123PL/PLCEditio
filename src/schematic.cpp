@@ -4,72 +4,55 @@
 #include <vector>
 
 
+const char* Schematic::ErrorToStr(Error err) {
+	switch (err) {
+	case Error::OK: return "OK";
+	case Error::CANNOT_OPEN_FILE: return "CANNOT_OPEN_FILE";
+	case Error::JSON_PARSING_ERROR: return "JSON_PARSING_ERROR";
+	case Error::JSON_NOT_AN_OBJECT: return "JSON_NOT_AN_OBJECT";
+	case Error::JSON_MISSING_BLOCKS_FIELD: return "JSON_MISSING_BLOCKS_FIELD";
+	case Error::JSON_BLOCKS_FIELD_NOT_ARRAY: return "JSON_BLOCKS_FIELD_NOT_ARRAY";
+	case Error::JSON_CONNECTIONS_FIELD_NOT_ARRAY: return "JSON_CONNECTIONS_FIELD_NOT_ARRAY";
+	case Error::JSON_MISSING_CONNECTIONS_FIELD: return "JSON_MISSING_CONNECTIONS_FIELD";
+	case Error::JSON_BLOCK_NOT_AN_OBJECT: return "JSON_BLOCK_NOT_AN_OBJECT";
+	case Error::JSON_BLOCK_MISSING_ID: return "JSON_BLOCK_MISSING_ID";
+	case Error::JSON_BLOCK_INVALID_ID: return "JSON_BLOCK_INVALID_ID";
+	case Error::JSON_BLOCK_MISSING_POS: return "JSON_BLOCK_MISSING_POS";
+	case Error::JSON_BLOCK_POS_NOT_ARRAY: return "JSON_BLOCK_POS_NOT_ARRAY";
+	case Error::JSON_BLOCK_INVALID_POS: return "JSON_BLOCK_INVALID_POS";
+	case Error::JSON_BLOCK_MISSING_SRC: return "JSON_BLOCK_MISSING_SRC";
+	case Error::JSON_BLOCK_POS_NOT_STRING: return "JSON_BLOCK_POS_NOT_STRING";
+	case Error::JSON_BLOCK_MISSING_LOC: return "JSON_BLOCK_MISSING_LOC";
+	case Error::JSON_BLOCK_LOC_NOT_STRING: return "JSON_BLOCK_LOC_NOT_STRING";
+	case Error::JSON_BLOCK_INVALID_LOC: return "JSON_BLOCK_INVALID_LOC";
+	case Error::JSON_CONNECTION_NOT_AN_OBJECT: return "JSON_CONNECTION_NOT_AN_OBJECT";
+	case Error::JSON_CONNECTION_IS_INVALID: return "JSON_CONNECTION_IS_INVALID";
+	case Error::JSON_CONNECTION_INVALID_SRC: return "JSON_CONNECTION_INVALID_SRC";
+	case Error::JSON_CONNECTION_INVALID_SRCPIN: return "JSON_CONNECTION_INVALID_SRCPIN";
+	case Error::JSON_CONNECTION_INVALID_DST: return "JSON_CONNECTION_INVALID_DST";
+	case Error::JSON_CONNECTION_INVALID_DSTPIN: return "JSON_CONNECTION_INVALID_DSTPIN";
+	default: return "Unnown Error";
+	}
+}
 
-Schematic::Error Schematic::LoadFromJsonFile(std::string path) {
 
-	project_path = path;
-	LoadProjectLibrary();
+Schematic::Error Schematic::LoadFromJsonFile(std::string _path) {
 
+
+	path = _path;
 
 	std::string data_str;
 	Error file_err = LoadFile(path, &data_str);
 	if (file_err != Error::OK) return file_err;
 
-
-	// parse json string
-
-	//                                          // just to make things simple in future
-	boost::json::parse_options parse_opt;       // 
-	parse_opt.allow_comments = true;			// 1) allow comments in json
-	parse_opt.allow_trailing_commas = true;     // 2) allow trailing commas
-
-	std::error_code err;
-	boost::json::value js = boost::json::parse(data_str, err, {}, parse_opt);
-
-	if (err) return Error::JSON_PARSING_ERROR;
-
-
-	std::vector<Block> blocks_raw;
-	std::vector<ConnectionRaw> connections_raw;
-
-	Error err1 = ParseJson(js,&blocks_raw, &connections_raw);
-
-	if (err1 != Error::OK) return err1;
-
-
-	blocks.clear();
-	connetions.clear();
-
-	// convert blocks to valid representation
-	for (const auto& block_raw : blocks_raw) {
-		blocks.push_back(std::make_shared<Block>(block_raw));
-	}
-
-	// convert connectons to valid internal representation
-	for (const auto& conn_raw : connections_raw) {
-
-		std::weak_ptr<Block> src_ptr;
-		std::weak_ptr<Block> dst_ptr;
-
-		// find blocks with specified indexes
-		for (const auto& block_ptr : blocks) {
-			if (conn_raw.src == block_ptr.get()->id) src_ptr = block_ptr;
-			if (conn_raw.dst == block_ptr.get()->id) dst_ptr = block_ptr;
-		}
-
-		connetions.emplace_back(src_ptr, conn_raw.src_pin, dst_ptr, conn_raw.dst_pin);
-
-	}
-
-
-	return Error::OK;
+	return ParseJson(data_str);
 
 }
 
 
 
 
-Schematic::Error Schematic::LoadFile(std::string path, std::string* result) {
+Schematic::Error Schematic::LoadFile(const std::filesystem::path& path, std::string* result) {
 	try {
 
 		std::fstream file(path, std::ios::binary | std::ios::in);
@@ -101,7 +84,22 @@ Schematic::Error Schematic::LoadFile(std::string path, std::string* result) {
 
 
 
-Schematic::Error Schematic::ParseJson(const boost::json::value& js, std::vector<Block>* blocks_raw, std::vector<ConnectionRaw>* connections_raw) {
+Schematic::Error Schematic::ParseJson(const std::string& data_str) {
+
+	std::vector<Block> blocks_raw;
+	std::vector<ConnectionRaw> connections_raw;
+
+	// parse json string
+
+	//                                          // just to make things simple in future
+	boost::json::parse_options parse_opt;       // 
+	parse_opt.allow_comments = true;			// 1) allow comments in json
+	parse_opt.allow_trailing_commas = true;     // 2) allow trailing commas
+
+	std::error_code err;
+	boost::json::value js = boost::json::parse(data_str, err, {}, parse_opt);
+
+	if (err) return Error::JSON_PARSING_ERROR;
 
 	if (!js.is_object()) return Error::JSON_NOT_AN_OBJECT;
 
@@ -116,7 +114,7 @@ Schematic::Error Schematic::ParseJson(const boost::json::value& js, std::vector<
 
 				Block block;
 				ParseJsonBlock(js_blocks_list->at(i), &block);
-				blocks_raw->push_back(block);
+				blocks_raw.push_back(block);
 			}
 
 		}
@@ -135,16 +133,41 @@ Schematic::Error Schematic::ParseJson(const boost::json::value& js, std::vector<
 
 				ConnectionRaw conn;
 				ParseJsonConnection(js_connections_list->at(i), &conn);
-				connections_raw->push_back(conn);
+				connections_raw.push_back(conn);
 			}
 
 		}
-		else { return Error::JSON_BLOCKS_FIELD_NOT_ARRAY; }
+		else { return Error::JSON_CONNECTIONS_FIELD_NOT_ARRAY; }
 
 	}
-	else { return Error::JSON_MISSING_BLOCKS_FIELD; }
+	else { return Error::JSON_MISSING_CONNECTIONS_FIELD; }
 
 
+
+
+	blocks.clear();
+	connetions.clear();
+
+	// convert blocks to valid representation
+	for (const auto& block_raw : blocks_raw) {
+		blocks.push_back(std::make_shared<Block>(block_raw));
+	}
+
+	// convert connectons to valid internal representation
+	for (const auto& conn_raw : connections_raw) {
+
+		std::weak_ptr<Block> src_ptr;
+		std::weak_ptr<Block> dst_ptr;
+
+		// find blocks with specified indexes
+		for (const auto& block_ptr : blocks) {
+			if (conn_raw.src == block_ptr.get()->id) src_ptr = block_ptr;
+			if (conn_raw.dst == block_ptr.get()->id) dst_ptr = block_ptr;
+		}
+
+		connetions.emplace_back(src_ptr, conn_raw.src_pin, dst_ptr, conn_raw.dst_pin);
+
+	}
 
 
 	return Error::OK;
