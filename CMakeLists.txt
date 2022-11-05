@@ -45,6 +45,8 @@ add_executable(PLCEditio
             "./src/dockspace.hpp"
             "./src/schematic.cpp"
             "./src/schematic.hpp"
+            "./src/schematic_block.cpp"
+            "./src/schematic_block.hpp"
             "./src/status_bar.cpp"
             "./src/status_bar.hpp"
             "./src/debug_console.cpp"

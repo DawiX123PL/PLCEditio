@@ -7,6 +7,10 @@
 
 Schematic::Error Schematic::LoadFromJsonFile(std::string path) {
 
+	project_path = path;
+	LoadProjectLibrary();
+
+
 	std::string data_str;
 	Error file_err = LoadFile(path, &data_str);
 	if (file_err != Error::OK) return file_err;

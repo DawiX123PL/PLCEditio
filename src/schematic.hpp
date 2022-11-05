@@ -5,6 +5,9 @@
 #include <string>
 #include <fstream>
 #include <boost/json.hpp>
+#include <filesystem>
+
+#include "schematic_block.hpp"
 
 
 
@@ -12,6 +15,7 @@ class Schematic {
 
 
 	struct Block {
+		std::weak_ptr<Block_Element> lib_block;
 		int id;
 		std::string src;
 		enum class Location{PROJECT, STD, EXTERNAL} location;
@@ -54,6 +58,7 @@ class Schematic {
 
 	std::list<std::shared_ptr<Block>> blocks;
 	std::list<Connection> connetions;
+	std::filesystem::path project_path;
 
 
 public:
@@ -118,6 +123,48 @@ public:
 	}
 
 	Error LoadFromJsonFile(std::string path);
+
+
+	// TODO: finish this function ASAP
+	void LoadProjectLibrary(){
+
+		std::list<Block_Element> library;
+
+		std::filesystem::path project_root = project_path.parent_path();
+
+		std::filesystem::directory_iterator dir(project_root);
+
+		for(const auto& dir_entry : dir){
+			if(!dir_entry.is_directory()) continue;
+			if(dir_entry.path().extension() != ".block") continue;
+
+			std::cout << "Load dir : " << dir_entry.path() << "\n";
+
+			const auto lib_block_name = dir_entry.path().stem().append(".json");
+			std::cout << "Stem : " << lib_block_name << "\n";
+
+			const auto block_desc_file_path = dir_entry.path() / lib_block_name;
+			std::filesystem::directory_entry block_desc_file(block_desc_file_path);
+
+			if(!block_desc_file.is_regular_file()){
+
+				std::string block_desc_path_str;
+				try{
+					block_desc_path_str = block_desc_file_path.string();
+				}catch(...){
+					continue;
+				}
+
+				library.emplace_back();
+				library.back().FromJsonFile(block_desc_path_str);
+
+			}
+			
+		}
+
+	}
+
+
 
 private:
 	Error LoadFile(std::string path, std::string* result);

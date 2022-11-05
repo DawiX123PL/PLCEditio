@@ -16,6 +16,10 @@
 # imgui layout
 /imgui.ini
 
+# imgui-node-editor layout
+/NodeEditor.json
+
+
 
 # visual studio
 /*.vcxproj.user

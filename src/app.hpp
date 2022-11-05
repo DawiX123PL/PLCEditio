@@ -1,12 +1,13 @@
 #pragma once
 
+#include <memory>
 #include <imgui.h>
 #include "dockspace.hpp"
 #include "status_bar.hpp"
 #include "debug_console.hpp"
 #include "schematic.hpp"
 #include "schematic_editor.hpp"
-
+#include "schematic_block.hpp"
 
 
 
@@ -24,6 +25,7 @@ public:
     DebugLogger event_log;
     
     Schematic mainSchematic;
+    std::list<std::shared_ptr<Block_Element>> library;
 
     SchematicEditor schematic_editor;
 
