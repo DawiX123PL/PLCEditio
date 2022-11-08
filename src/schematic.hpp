@@ -17,7 +17,7 @@ class Schematic {
 	struct Block {
 		std::weak_ptr<BlockData> lib_block;
 		int id;
-		std::string src;
+		std::string name;
 		enum class Location{PROJECT, STD, EXTERNAL} location;
 		struct Pos { int x; int y; } pos;
 	};
@@ -59,9 +59,11 @@ class Schematic {
 	std::list<std::shared_ptr<Block>> blocks;
 	std::list<Connection> connetions;
 	std::filesystem::path path;
-
-
 public:
+
+	std::list<std::shared_ptr<Block>> Blocks(){return blocks;};
+	std::list<Connection> Connetions(){return connetions;};
+	std::filesystem::path Path(){return path;};
 
 	enum class Error {
 		OK,
@@ -75,6 +77,8 @@ public:
 		JSON_CONNECTIONS_FIELD_NOT_ARRAY,
 		JSON_MISSING_CONNECTIONS_FIELD,
 
+		JSON_BLOCK_NAME_NOT_STRING,
+		JSON_BLOCK_MISSING_NAME,
 		JSON_BLOCK_NOT_AN_OBJECT,
 		JSON_BLOCK_MISSING_ID,
 		JSON_BLOCK_INVALID_ID,
@@ -96,7 +100,19 @@ public:
 
 	};
 
-	std::filesystem::path Path(){ return path; }
+	void LinkWithLibrary(std::list<std::shared_ptr<BlockData>>* library){
+		if(!library) return;
+
+		for(auto& block_ptr: blocks){
+			for(const auto block_data_ptr: *library){
+				if(block_ptr->name == block_data_ptr->Name()){
+					block_ptr->lib_block = block_data_ptr;
+				}
+			}
+		}
+
+	}
+
 
 	static const char* ErrorToStr(Error err);
 

@@ -37,6 +37,9 @@ public:
         event_log("Event Log"),
         schematic_editor("Schematic Editor")
     {
+
+        schematic_editor.SetSchematic(&mainSchematic);
+
         schematic_editor.Show(true);
 
         event_log.Show(true);
@@ -172,9 +175,13 @@ private:
         auto proj_lib_path = mainSchematic.Path().parent_path();
         BlockData::LoadProjectLibrary(&proj_lib, proj_lib_path);
 
+        library.clear();
+
         for (auto& block_from_lib : proj_lib) {
             library.push_back(std::make_shared<BlockData>(block_from_lib));
         }
+
+        mainSchematic.LinkWithLibrary(&library);
 
     }
 

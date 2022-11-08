@@ -25,6 +25,8 @@ const char* Schematic::ErrorToStr(Error err) {
 	case Error::JSON_BLOCK_MISSING_LOC: return "JSON_BLOCK_MISSING_LOC";
 	case Error::JSON_BLOCK_LOC_NOT_STRING: return "JSON_BLOCK_LOC_NOT_STRING";
 	case Error::JSON_BLOCK_INVALID_LOC: return "JSON_BLOCK_INVALID_LOC";
+	case Error::JSON_BLOCK_NAME_NOT_STRING: return "JSON_BLOCK_NAME_NOT_STRING";
+	case Error::JSON_BLOCK_MISSING_NAME: return "JSON_BLOCK_MISSING_NAME";
 	case Error::JSON_CONNECTION_NOT_AN_OBJECT: return "JSON_CONNECTION_NOT_AN_OBJECT";
 	case Error::JSON_CONNECTION_IS_INVALID: return "JSON_CONNECTION_IS_INVALID";
 	case Error::JSON_CONNECTION_INVALID_SRC: return "JSON_CONNECTION_INVALID_SRC";
@@ -113,7 +115,8 @@ Schematic::Error Schematic::ParseJson(const std::string& data_str) {
 			for (int i = 0; i < js_blocks_list->size(); i++) {
 
 				Block block;
-				ParseJsonBlock(js_blocks_list->at(i), &block);
+				Error e = ParseJsonBlock(js_blocks_list->at(i), &block);
+				if (e != Error::OK) return e;
 				blocks_raw.push_back(block);
 			}
 
@@ -132,7 +135,8 @@ Schematic::Error Schematic::ParseJson(const std::string& data_str) {
 			for (int i = 0; i < js_connections_list->size(); i++) {
 
 				ConnectionRaw conn;
-				ParseJsonConnection(js_connections_list->at(i), &conn);
+				Error e = ParseJsonConnection(js_connections_list->at(i), &conn);
+				if (e != Error::OK) return e;
 				connections_raw.push_back(conn);
 			}
 
@@ -225,13 +229,13 @@ Schematic::Error Schematic::ParseJsonBlock(const boost::json::value& js, Block* 
 	else return Error::JSON_BLOCK_MISSING_POS;
 
 	// get src
-	if (auto js_src = js_obj.if_contains("pos")) {
-		if (auto js_src_str = js_src->if_string()) {
-			block->src = std::string(js_src_str->begin(), js_src_str->end());
+	if (auto js_name = js_obj.if_contains("name")) {
+		if (auto js_name_str = js_name->if_string()) {
+			block->name = std::string(js_name_str->begin(), js_name_str->end());
 		}
-		else return Error::JSON_BLOCK_POS_NOT_STRING;
+		else return Error::JSON_BLOCK_NAME_NOT_STRING;
 	}
-	else return Error::JSON_BLOCK_MISSING_SRC;
+	else return Error::JSON_BLOCK_MISSING_NAME;
 
 	// get location
 	if (auto js_loc = js_obj.if_contains("loc")) {
@@ -284,19 +288,19 @@ Schematic::Error Schematic::ParseJsonConnection(const boost::json::value& js, Co
 
 	// src_pin
 	if (auto js_num = js_obj.if_contains("src_pin")) {
-		if (IsInt(js_num)) conn->src = GetInt(js_num);
+		if (IsInt(js_num)) conn->src_pin = GetInt(js_num);
 		else return Error::JSON_CONNECTION_INVALID_SRCPIN;
 	}
 
 	// src
 	if (auto js_num = js_obj.if_contains("dst")) {
-		if (IsInt(js_num)) conn->src = GetInt(js_num);
+		if (IsInt(js_num)) conn->dst = GetInt(js_num);
 		else return Error::JSON_CONNECTION_INVALID_DST;
 	}
 
 	// src_pin
 	if (auto js_num = js_obj.if_contains("dst_pin")) {
-		if (IsInt(js_num)) conn->src = GetInt(js_num);
+		if (IsInt(js_num)) conn->dst_pin = GetInt(js_num);
 		else return Error::JSON_CONNECTION_INVALID_DSTPIN;
 	}
 

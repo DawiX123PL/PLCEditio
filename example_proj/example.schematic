@@ -1,14 +1,14 @@
 {
     "blocks":[
-        {"id":0, "pos":[0,0],  "loc":"PROJ", "src":"./input.block"},
-        {"id":1, "pos":[0,2],  "loc":"PROJ", "src":"./input.block"},
-        {"id":2, "pos":[5,0],  "loc":"PROJ", "src":"./and.block"},
-        {"id":3, "pos":[11,0], "loc":"PROJ", "src":"./output.block"}
+        {"id":1, "pos":[0,0],  "loc":"PROJ", "name":"INPUT"},
+        {"id":2, "pos":[0,2],  "loc":"PROJ", "name":"INPUT"},
+        {"id":3, "pos":[5,0],  "loc":"PROJ", "name":"AND"},
+        {"id":4, "pos":[11,0], "loc":"PROJ", "name":"OUTPUT"}
     ],
 
     "connections":[
-        {"src": 0,"src_pin": 0, "dst":2, "dst_pin":0},
-        {"src": 1,"src_pin": 0, "dst":2, "dst_pin":1},
-        {"src": 2,"src_pin": 1, "dst":3, "dst_pin":0}
+        {"src": 1,"src_pin": 0, "dst":3, "dst_pin":0},
+        {"src": 2,"src_pin": 0, "dst":3, "dst_pin":1},
+        {"src": 3,"src_pin": 1, "dst":4, "dst_pin":0}
     ]
 }

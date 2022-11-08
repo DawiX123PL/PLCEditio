@@ -66,34 +66,29 @@ public:
     ax::NodeEditor::NodeId Render(int id){
 
         int node_id = id << 8;
-        int input_id = id << 8;
-        int output_id = id << 8 + 127;
+        int input_id = id << 8 + 1;
+        int output_id = id << 8 + 127 + 1;
 
         ax::NodeEditor::BeginNode(node_id);
 
         ImGui::TextUnformatted(name.c_str());
-        ImGui::Dummy(ImVec2(0, 28));
 
-        
 
-        for(const auto& i_pin: inputs){
-            ax::NodeEditor::BeginPin(input_id++, ax::NodeEditor::PinKind::Input);
+        for(int i = 0; i < inputs.size() || i < outputs.size(); i++){
 
-            const ImVec2 size(pin_icon_size, pin_icon_size);
-            // ax::Widgets::Icon(size, ax::Drawing::IconType::Circle, false);
-            ImGui::Text(i_pin.label.c_str());
+            if(i < inputs.size()){
+                ax::NodeEditor::BeginPin(input_id++, ax::NodeEditor::PinKind::Input);
+                ImGui::Text(inputs[i].label.c_str());
+                ax::NodeEditor::EndPin();
 
-            ax::NodeEditor::EndPin();
-        }
+                ImGui::SameLine();
+            }
 
-        for(const auto& o_pin: outputs){
-            ax::NodeEditor::BeginPin(output_id++, ax::NodeEditor::PinKind::Output);
-
-            const ImVec2 size(pin_icon_size, pin_icon_size);
-            // ax::Widgets::Icon(size, ax::Drawing::IconType::Circle, false);
-            ImGui::Text(o_pin.label.c_str());
-
-            ax::NodeEditor::EndPin();
+            if(i < outputs.size()){
+                ax::NodeEditor::BeginPin(output_id++, ax::NodeEditor::PinKind::Output);
+                ImGui::Text(outputs[i].label.c_str());
+                ax::NodeEditor::EndPin();
+            }
         }
 
 

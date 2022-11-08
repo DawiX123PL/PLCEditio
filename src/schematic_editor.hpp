@@ -2,12 +2,15 @@
 
 #include <imgui_node_editor.h>
 #include "window_object.hpp"
+#include "schematic.hpp"
 
 
 
 class SchematicEditor: public WindowObject{
 
     ax::NodeEditor::EditorContext* context;
+
+    Schematic* schematic;
 
 public:
     SchematicEditor(std::string name): WindowObject(name){
@@ -18,8 +21,13 @@ public:
         ax::NodeEditor::DestroyEditor(context);
     }
 
+    void SetSchematic(Schematic* s){
+        schematic = s;
+    }
+
 
     void Render() override{
+        
         if (!show) return;
 
         auto& io = ImGui::GetIO();
@@ -27,32 +35,27 @@ public:
 
         if (ImGui::Begin(window_name.c_str(), &show)) {
 
-            
-
             ax::NodeEditor::SetCurrentEditor(context);
             ax::NodeEditor::Begin("##NODE_EDITOR");
-                namespace ed = ax::NodeEditor;
 
-                int uniqueId = 1;
-                // Start drawing nodes.
-                ed::BeginNode(uniqueId++);
-                    ImGui::Text("Node A");
-                    ed::BeginPin(uniqueId++, ed::PinKind::Input);
-                        ImGui::Text("-> In");
-                    ed::EndPin();
+            if(schematic){
+                // render blocks 
+                for(auto block: schematic->Blocks()){
+                    auto block_data = block->lib_block.lock();
+                    
+                    if(block_data){
+                        block_data->Render(block->id);
+                    }
+                }
 
-                    ImGui::SameLine();
-                    ed::BeginPin(uniqueId++, ed::PinKind::Output);
-                        ImGui::Text("Out ->");
-                    ed::EndPin();
-                ed::EndNode();
+            }
 
-                auto a = ed::GetNodePosition(1);
+            ax::NodeEditor::BeginNode((int)(10 << 8));
+            ImGui::Text("Witam pana");
+            ax::NodeEditor::EndNode();
 
             ax::NodeEditor::End();
             ax::NodeEditor::SetCurrentEditor(nullptr);
-
-            ImGui::Text(" [%f,%f] ", a.x, a.y);
 
 
         }

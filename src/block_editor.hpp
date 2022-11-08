@@ -61,19 +61,31 @@ public:
 
         std::shared_ptr<BlockData> block_ptr = block.lock();
 
+        // Creating multiple instances of window with same name 
+        // can cause crashing in function ax::NodeEditor::Begin(...).
+        // TODO:
+        // fix this issue.
+
+        // this prevents ax::NodeEditor::Begin(...) function from crashing (SOMEHOW and only sometimes)
+        ImGui::SetNextWindowSizeConstraints(ImVec2(100, 100), ImVec2(10000, 10000));
+        //ImGui::SetNextWindowSize(ImVec2(400, 400));
+
         if(ImGui::Begin(window_name.c_str(), &show)){
 
             // block preview
-            if(ImGui::Checkbox("Show Prewiev", &show_prewiev)) show_prewiev != show_prewiev;
+            if(ImGui::Checkbox("Show Preview", &show_prewiev)) show_prewiev != show_prewiev;
             if(show_prewiev){ 
-
                 ax::NodeEditor::SetCurrentEditor(context);
-                ax::NodeEditor::Begin("##BLOCK_WINDOW", ImVec2(ImGui::GetWindowWidth(), 300));
+
+                // IMPORTANT:
+                // THIS FUNCTION CAN FAIL ASSERTION, SOR SOME UNNOWN REASON.
+                // wft 
+                ax::NodeEditor::Begin("##BLOCK_WINDOW", ImVec2(ImGui::GetWindowWidth(), 200));
 
                 auto id = block_copy.Render(1);
 
                 ax::NodeEditor::End();
-                //if(ImGui::Button("Center block")) ax::NodeEditor::CenterNodeOnScreen(id);
+
                 if(ImGui::Button("Center block")) ax::NodeEditor::NavigateToContent();
                 ax::NodeEditor::SetCurrentEditor(nullptr);
             }
