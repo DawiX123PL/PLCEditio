@@ -23,18 +23,20 @@ class Schematic {
 	};
 
 	struct Connection {
+		int id;
 		std::weak_ptr<Block> src;
 		std::weak_ptr<Block> dst;
 		int src_pin;
 		int dst_pin;
 
-		Connection(std::weak_ptr<Block> _src, int _src_pin, std::weak_ptr<Block> _dst, int _dst_pin)
-			:src(_src), src_pin(_src_pin), dst(_dst), dst_pin(_dst_pin){}
+		Connection(int _id, std::weak_ptr<Block> _src, int _src_pin, std::weak_ptr<Block> _dst, int _dst_pin)
+			:id(_id), src(_src), src_pin(_src_pin), dst(_dst), dst_pin(_dst_pin){}
 
 		// returns true if connection is valid
 		bool verify() {
 			if (src.expired()) return false;
 			if (dst.expired()) return false;
+			return true;
 		}
 	};
 
@@ -56,10 +58,21 @@ class Schematic {
 	};
 
 
+	int next_block_id;
+	int next_connection_id;
+
+
+public:
+
 	std::list<std::shared_ptr<Block>> blocks;
 	std::list<Connection> connetions;
 	std::filesystem::path path;
-public:
+	
+	
+	Schematic(){
+		next_block_id = 1;
+		next_connection_id = 1;
+	}
 
 	std::list<std::shared_ptr<Block>> Blocks(){return blocks;};
 	std::list<Connection> Connetions(){return connetions;};
@@ -99,6 +112,49 @@ public:
 		JSON_CONNECTION_INVALID_DSTPIN,
 
 	};
+
+	bool CreateConnection(int src_id, int src_pin, int dst_id, int dst_pin){
+
+		// find src and dst block;
+		std::shared_ptr<Block> src = nullptr;
+		std::shared_ptr<Block> dst = nullptr;
+		
+		for(auto b: blocks){
+			if(b->id == src_id) src = b;
+			if(b->id == dst_id) dst = b;
+		};
+		
+		Connection conn(next_connection_id++, src, src_pin, dst, dst_pin);
+		if (conn.verify()) {
+			connetions.push_back(conn);
+			return true;
+		}
+		else { 
+			return false; 
+		}
+
+	}
+
+
+	std::shared_ptr<Block> CreateBlock(std::shared_ptr<BlockData> block_data, int x, int y){
+		if(block_data == nullptr) return 0;
+
+		Block b;
+		b.id = next_block_id++;
+		b.lib_block = block_data;
+		b.location = Block::Location::PROJECT;
+		b.name = block_data->Name();
+		b.pos.x = x;
+		b.pos.y = y;
+
+		auto block_ptr = std::make_shared<Block>(b);
+	
+		blocks.push_back(block_ptr);
+
+		return block_ptr;
+	}
+
+
 
 	void LinkWithLibrary(std::list<std::shared_ptr<BlockData>>* library){
 		if(!library) return;

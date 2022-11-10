@@ -54,33 +54,51 @@ public:
 
 
 
-
-    // TODO: CHANGE INDEXING LATER
     // 
     // id - current object id
-    // node_id = id << 8;
-    // input_id  = id << 8 + input_number; 
-    // input_id  = id << 8 + 127 + output_number;
+    // node_id    = (id << 8)                   
+    // input_id   = (id << 8) |          (pin+1)
+    // output_id  = (id << 8) | (1<<7) | (pin+1)
     //
+    // Imnode Block id
+    // 
+    //     ID
+    // ┌───────┐ ┌──────┐
+    // 0000 0012 0000 0000
+    // 
+    // 
+    // Imnode input id
+    // 
+    //     ID     PinNr+1
+    // ┌───────┐  ┌──────┐
+    // 0000 0012 0000 0002
+    //           ▲
+    //           └── 0 - input pin
+    // 
+    // 
+    // Imnode output id
+    // 
+    //     ID     PinNr+1
+    // ┌───────┐  ┌──────┐
+    // 0000 0012 1000 0002
+    //           ▲
+    //           └── 1 - output pin
 
-    inline int GetImnodeID(int id){
-        return id << 8;
-    }
+    static inline ImGuiID GetImnodeID(int id)                { return (id << 8);                    }
+    static inline ImGuiID GetImnodeInputID(int id, int pin)  { return (id << 8) |          (pin+1); }
+    static inline ImGuiID GetImnodeOutputID(int id, int pin) { return (id << 8) | (1<<7) | (pin+1); }
 
-    inline int GetImnodeInputID(int id, int pin){
-        return id << 8 + 1; 
-    }
+    static inline int ImnodeToID(ImGuiID id)                 { return (id >> 8);                          }
+    static inline int ImnodeToInputID(ImGuiID id)            { return (id & 0b10000000) ? -1 : (id & 0b01111111)-1; }
+    static inline int ImnodeToOutputID(ImGuiID id)           { return (id & 0b10000000) ? (id & 0b01111111)-1 : -1; }
 
-    inline int GetImnodeOutputID(int id, int pin){
-        return id << 8 + 127 + 1;
-    }
 
 
     int Render(int id){
 
-        int node_id = id << 8;
-        int input_id = id << 8 + 1;
-        int output_id = id << 8 + 127 + 1;
+        int node_id = GetImnodeID(id);
+        int input_id = GetImnodeInputID(id, 0);
+        int output_id = GetImnodeOutputID(id, 0);
 
         ImNodes::BeginNode(node_id);
 

@@ -1,6 +1,8 @@
 #pragma once
 
-#include <imgui_node_editor.h>
+#include <imnodes.h>
+// #include <imnodes_internal.h>
+
 #include "window_object.hpp"
 #include "schematic.hpp"
 
@@ -12,6 +14,7 @@ class SchematicEditor: public WindowObject{
     ImNodesContext* context;
 
     Schematic* schematic;
+    std::list<std::shared_ptr<BlockData>>* library;
 
     bool init;
 
@@ -19,6 +22,7 @@ public:
     SchematicEditor(std::string name): WindowObject(name){
         init = false;
         schematic = nullptr;
+        library = nullptr;
         context = ImNodes::CreateContext();
         context_editor = ImNodes::EditorContextCreate();
     };
@@ -30,6 +34,11 @@ public:
 
     void SetSchematic(Schematic* s){
         schematic = s;
+        init = true;
+    }
+
+    void SetLibrary(std::list<std::shared_ptr<BlockData>>* lib){
+        library = lib;
         init = true;
     }
 
@@ -49,8 +58,42 @@ public:
 
             ImNodes::MiniMap(.1, ImNodesMiniMapLocation_BottomRight);
 
+
+
+            // right click PopUp
+            if(ImGui::IsKeyPressed(ImGuiKey_MouseRight) && ImNodes::IsEditorHovered()){
+                ImGui::OpenPopup("##SCHEMATIC_EDITOR_POPUP");
+            }
+
+            // render popup
+            if(ImGui::BeginPopup("##SCHEMATIC_EDITOR_POPUP")){
+
+                const ImVec2 click_pos = ImGui::GetMousePosOnOpeningCurrentPopup();
+                
+                if(ImGui::BeginMenu("Add")){
+                    
+                    if (library) {
+                        for (auto block : *library) {
+
+                            if (ImGui::MenuItem(block->Name().c_str())) {
+                                // TODO:
+                                // ADD BLOCK to schematic there                      
+
+                                auto b = schematic->CreateBlock(block, 0, 0);
+                                ImNodes::SetNodeScreenSpacePos(BlockData::GetImnodeID(b->id), click_pos);
+                            }
+                        }
+                    }
+                 
+                    ImGui::EndMenu();
+                }
+
+                ImGui::EndPopup();
+            }
+
+
+            // render blocks 
             if(schematic){
-                // render blocks 
                 for(auto block: schematic->Blocks()){
                     auto block_data = block->lib_block.lock();
                     
@@ -60,12 +103,13 @@ public:
                 }
             }
 
+
             // Setup positions in editor
             if(schematic && init){
                 for(auto block: schematic->Blocks()){
                     auto block_data = block->lib_block.lock();
                     if(block_data){
-                        int id = block_data->GetImnodeID(block->id);
+                        int id = BlockData::GetImnodeID(block->id);
                         ImVec2 pos = ImVec2(block->pos.x, block->pos.y);
                         ImNodes::SetNodeGridSpacePos(id, pos);
                     }
@@ -73,20 +117,92 @@ public:
             }
             
             // Render links
-
             if(schematic){
                 for(auto& conn: schematic->Connetions()){
 
-                    // TODO - FINISH THIS
-                  //  conn.
+                    auto src = conn.src.lock();
+                    auto dst = conn.dst.lock();
 
+                    if(!src || !dst) continue;
+                    int src_pin_imnodes = BlockData::GetImnodeOutputID(src->id, conn.src_pin);
+                    int dst_pin_imnodes = BlockData::GetImnodeInputID(dst->id, conn.dst_pin);
+                    
+                    ImNodes::Link(conn.id, src_pin_imnodes, dst_pin_imnodes);
+                }
+            }
+
+
+
+            // delete elements 
+            if(ImGui::IsKeyPressed(ImGuiKey_Delete)){
+
+                // delete blocks 
+                for(auto iter = schematic->blocks.begin(); iter != schematic->blocks.end(); /*none*/){
+
+                    // check if selected
+                    auto block = *iter;
+                    int id = BlockData::GetImnodeID(block->id);
+                    if(ImNodes::IsNodeSelected(id)){
+                        // delete selected 
+                        iter = schematic->blocks.erase(iter);
+                    }else{
+                        iter++;
+                    }
+                }
+
+                // delete connections
+                for(auto iter = schematic->connetions.begin(); iter != schematic->connetions.end(); /*none*/){
+
+                    // check if selected
+                    auto conn = *iter;
+                    if(ImNodes::IsLinkSelected(conn.id)){
+                        // delete selected 
+                        iter = schematic->connetions.erase(iter);
+                    }else{
+                        iter++;
+                    }
                 }
             }
 
 
             init = false;
             
+
+
+            ImNodes::PushColorStyle(ImNodesCol_Link, IM_COL32(255,0,0,255));
+            ImNodes::PushColorStyle(ImNodesCol_LinkHovered, IM_COL32(255,0,0,255));
+            ImNodes::PushColorStyle(ImNodesCol_LinkSelected, IM_COL32(255,0,0,255));
+
             ImNodes::EndNodeEditor();
+
+            {   // Create link 
+                // This block must be outside BeginNodeEditor/EndNodeEditor
+
+                int src_id;
+                int dst_id;
+
+                bool created_from_stap;
+
+                if(ImNodes::IsLinkCreated(&src_id, &dst_id, &created_from_stap)){
+                    schematic->CreateConnection(
+                            BlockData::ImnodeToID(src_id),
+                            BlockData::ImnodeToOutputID(src_id),
+                            BlockData::ImnodeToID(dst_id),
+                            BlockData::ImnodeToInputID(dst_id)
+                        );
+                }
+
+                // This migth be useful in checking if new link source and destination have same data type
+                // or something
+                // std::cout << context->HoveredPinIdx.HasValue() << "\n";
+                
+            }
+
+            ImNodes::PopColorStyle();
+            ImNodes::PopColorStyle();
+            ImNodes::PopColorStyle();
+
+
             ImNodes::EditorContextSet(nullptr);
             ImNodes::SetCurrentContext(nullptr);
 

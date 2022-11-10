@@ -108,6 +108,8 @@ private:
             if (ImGui::MenuItem("Event Log", nullptr, event_log.IsShown())) event_log.Show(!event_log.IsShown());
             ImGui::Separator();
             if (ImGui::MenuItem("Project Tree", nullptr, show_project_tree_window)) show_project_tree_window = !show_project_tree_window;
+            ImGui::Separator();
+            if (ImGui::MenuItem("Schematic", nullptr, schematic_editor.IsShown())) schematic_editor.Show(!schematic_editor.IsShown());         
             ImGui::EndMenu();
         }
 
@@ -179,7 +181,7 @@ private:
 
         mainSchematic.LinkWithLibrary(&library);
         schematic_editor.SetSchematic(&mainSchematic);
-        
+        schematic_editor.SetLibrary(&library);
     }
 
 
@@ -247,7 +249,9 @@ private:
             
             if (ImGui::TreeNode(tree_name.c_str())) {
 
-                ImGui::TreeNodeEx("Schematic", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
+                if(ImGui::TreeNodeEx("Schematic", ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen)){
+                    if(ImGui::IsItemClicked()) schematic_editor.Show(true);
+                }
 
 
                 if (ImGui::TreeNode("Blocks")) {

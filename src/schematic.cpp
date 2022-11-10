@@ -158,6 +158,7 @@ Schematic::Error Schematic::ParseJson(const std::string& data_str) {
 	}
 
 	// convert connectons to valid internal representation
+	int conn_id = 1;
 	for (const auto& conn_raw : connections_raw) {
 
 		std::weak_ptr<Block> src_ptr;
@@ -169,10 +170,21 @@ Schematic::Error Schematic::ParseJson(const std::string& data_str) {
 			if (conn_raw.dst == block_ptr.get()->id) dst_ptr = block_ptr;
 		}
 
-		connetions.emplace_back(src_ptr, conn_raw.src_pin, dst_ptr, conn_raw.dst_pin);
+		connetions.emplace_back(conn_id++, src_ptr, conn_raw.src_pin, dst_ptr, conn_raw.dst_pin);
 
 	}
 
+
+	// find id for next block/connection
+	for(auto& b: blocks){
+		next_block_id = next_block_id > b->id ? next_block_id : b->id; // next_block_id = max(next_block_id, id);
+	}
+	next_block_id++;
+
+	for(auto& c: connetions){
+		next_connection_id = next_connection_id  > c.id ? next_connection_id  : c.id; // next_block_id = max(next_block_id, id);
+	}
+	next_connection_id++;
 
 	return Error::OK;
 }
