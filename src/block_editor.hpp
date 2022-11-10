@@ -1,8 +1,9 @@
 #include <memory>
 #include <vector>
 #include <imgui.h>
+#include <imnodes.h>
 #include <misc/cpp/imgui_stdlib.h>
-#include <imgui_node_editor.h>
+// #include <imgui_node_editor.h>
 #include "window_object.hpp"
 #include "schematic_block.hpp"
 
@@ -13,7 +14,9 @@
 class BlockEditor: public WindowObject{
 
     std::weak_ptr<BlockData> block;
-    ax::NodeEditor::EditorContext* context;
+
+    ImNodesEditorContext* context_editor;
+    ImNodesContext* context;
 
     static constexpr int io_count_limit = 126;
     int inputs_count;
@@ -22,6 +25,8 @@ class BlockEditor: public WindowObject{
     BlockData block_copy;
 
     bool show_prewiev;
+    bool center_on_start;
+    int block_id;
 
 public:
 
@@ -30,10 +35,11 @@ public:
         block(_block)
     {
         show = true;
+        center_on_start = true;
+        block_id = 0;
 
-        ax::NodeEditor::Config config;
-        config.SettingsFile = nullptr;
-        context = ax::NodeEditor::CreateEditor(&config);
+        context = ImNodes::CreateContext();
+        context_editor = ImNodes::EditorContextCreate();
 
         inputs_count = _block->Inputs().size();
         outputs_count = _block->Outputs().size();
@@ -42,7 +48,8 @@ public:
     }
 
     ~BlockEditor(){
-        ax::NodeEditor::DestroyEditor(context);
+        ImNodes::EditorContextFree(context_editor);
+        ImNodes::DestroyContext(context);
     }
 
 
@@ -68,31 +75,46 @@ public:
 
         // this prevents ax::NodeEditor::Begin(...) function from crashing (SOMEHOW and only sometimes)
         ImGui::SetNextWindowSizeConstraints(ImVec2(100, 100), ImVec2(10000, 10000));
-        //ImGui::SetNextWindowSize(ImVec2(400, 400));
 
         if(ImGui::Begin(window_name.c_str(), &show)){
 
             // block preview
             if(ImGui::Checkbox("Show Preview", &show_prewiev)) show_prewiev != show_prewiev;
             if(show_prewiev){ 
-                ax::NodeEditor::SetCurrentEditor(context);
 
-                // IMPORTANT:
-                // THIS FUNCTION CAN FAIL ASSERTION, SOR SOME UNNOWN REASON.
-                // wft 
-                ax::NodeEditor::Begin("##BLOCK_WINDOW", ImVec2(ImGui::GetWindowWidth(), 200));
+                ImGui::BeginChild(1, ImVec2(ImGui::GetWindowWidth(), 200));
+                ImNodes::SetCurrentContext(context);
+                ImNodes::EditorContextSet(context_editor);
 
-                auto id = block_copy.Render(1);
+                if(ImGui::Button("Center block") || center_on_start){
+                    if(block_id > 0){
+                        ImVec2 block_pos = ImNodes::GetNodeGridSpacePos(block_id);
+                        ImVec2 block_size = ImNodes::GetNodeDimensions(block_id);
+                        ImVec2 editor_size = ImGui::GetWindowSize();
+                        ImVec2 pos = ImVec2(
+                            block_pos.x - block_size.x / 2 + editor_size.x / 2,
+                            block_pos.y - block_size.y / 2 + editor_size.y / 2
+                        );
+                        ImNodes::EditorContextResetPanning(pos);
+                        center_on_start = false;
+                    }
+                    
+                } 
 
-                ax::NodeEditor::End();
+                ImNodes::BeginNodeEditor();
 
-                if(ImGui::Button("Center block")) ax::NodeEditor::NavigateToContent();
-                ax::NodeEditor::SetCurrentEditor(nullptr);
+                block_id = block_copy.Render(1);
+
+                ImNodes::EndNodeEditor();
+
+                ImNodes::EditorContextSet(nullptr);
+                ImNodes::SetCurrentContext(nullptr);
+                ImGui::EndChild();
             }
             ImGui::Separator();
             
             { // block edition
-                ImGui::BeginChild(1);
+                ImGui::BeginChild(2);
 
                 std::string name = block_copy.Name();
                 ImGui::InputText("Name", &name);

@@ -7,8 +7,8 @@
 #include <filesystem>
 #include <boost/json.hpp>
 #include <imgui.h>
-#include <imgui_node_editor.h>
-// #include <utilities/widgets.h>
+#include <imnodes.h>
+
 
 
 class BlockData{
@@ -63,36 +63,44 @@ public:
     // input_id  = id << 8 + 127 + output_number;
     //
 
-    ax::NodeEditor::NodeId Render(int id){
+    inline int GetImnodeID(int id){
+        return id << 8;
+    }
+
+    inline int GetImnodeInputID(int id, int pin){
+        return id << 8 + 1; 
+    }
+
+    inline int GetImnodeOutputID(int id, int pin){
+        return id << 8 + 127 + 1;
+    }
+
+
+    int Render(int id){
 
         int node_id = id << 8;
         int input_id = id << 8 + 1;
         int output_id = id << 8 + 127 + 1;
 
-        ax::NodeEditor::BeginNode(node_id);
+        ImNodes::BeginNode(node_id);
 
+        ImNodes::BeginNodeTitleBar();
         ImGui::TextUnformatted(name.c_str());
+        ImNodes::EndNodeTitleBar();
 
-
-        for(int i = 0; i < inputs.size() || i < outputs.size(); i++){
-
-            if(i < inputs.size()){
-                ax::NodeEditor::BeginPin(input_id++, ax::NodeEditor::PinKind::Input);
-                ImGui::Text(inputs[i].label.c_str());
-                ax::NodeEditor::EndPin();
-
-                ImGui::SameLine();
-            }
-
-            if(i < outputs.size()){
-                ax::NodeEditor::BeginPin(output_id++, ax::NodeEditor::PinKind::Output);
-                ImGui::Text(outputs[i].label.c_str());
-                ax::NodeEditor::EndPin();
-            }
+        for(auto& i: inputs){
+            ImNodes::BeginInputAttribute(input_id++, ImNodesPinShape_Circle);
+            ImGui::Text(i.label.c_str());
+            ImNodes::EndInputAttribute();
         }
 
+        for(auto& o: outputs){
+            ImNodes::BeginOutputAttribute(output_id++, ImNodesPinShape_Circle);
+            ImGui::Text(o.label.c_str());
+            ImNodes::EndOutputAttribute();
+        }
 
-        ax::NodeEditor::EndNode();
+        ImNodes::EndNode();
 
         return node_id;
     }

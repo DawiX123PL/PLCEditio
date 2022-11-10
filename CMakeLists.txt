@@ -38,9 +38,18 @@ set(IMGUI_NODE_EDITOR
     "./libs/imgui-node-editor/imgui_node_editor_internal.inl"
     )
 
+
+set(IMNODES
+    "libs/imnodes/imnodes_internal.h"
+    "libs/imnodes/imnodes.cpp"
+    "libs/imnodes/imnodes.h"
+    )
+
+
 add_executable(PLCEditio 
             ${IMGUI} 
             ${IMGUI_NODE_EDITOR}
+            ${IMNODES}
             "./src/main.cpp"
             "./src/app.hpp"
             "./src/dockspace.cpp"
@@ -66,6 +75,7 @@ include_directories("libs/imgui")
 include_directories("libs/imgui/backends")
 include_directories("libs/boost")
 include_directories("libs/imgui-node-editor")
+include_directories("libs/imnodes")
 
 
 find_package(OpenGL REQUIRED)

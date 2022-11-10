@@ -13,3 +13,6 @@
 	path = libs/imgui-node-editor
 	url = https://github.com/thedmd/imgui-node-editor.git
 	branch = master
+[submodule "libs/imnodes"]
+	path = libs/imnodes
+	url = https://github.com/Nelarius/imnodes.git

@@ -8,21 +8,29 @@
 
 class SchematicEditor: public WindowObject{
 
-    ax::NodeEditor::EditorContext* context;
+    ImNodesEditorContext* context_editor;
+    ImNodesContext* context;
 
     Schematic* schematic;
 
+    bool init;
+
 public:
     SchematicEditor(std::string name): WindowObject(name){
-        context =  ax::NodeEditor::CreateEditor();
+        init = false;
+        schematic = nullptr;
+        context = ImNodes::CreateContext();
+        context_editor = ImNodes::EditorContextCreate();
     };
 
     ~SchematicEditor() {
-        ax::NodeEditor::DestroyEditor(context);
+        ImNodes::EditorContextFree(context_editor);
+        ImNodes::DestroyContext(context);
     }
 
     void SetSchematic(Schematic* s){
         schematic = s;
+        init = true;
     }
 
 
@@ -35,8 +43,10 @@ public:
 
         if (ImGui::Begin(window_name.c_str(), &show)) {
 
-            ax::NodeEditor::SetCurrentEditor(context);
-            ax::NodeEditor::Begin("##NODE_EDITOR");
+            ImNodes::SetCurrentContext(context);
+            ImNodes::EditorContextSet(context_editor);
+            ImNodes::BeginNodeEditor();
+
 
             if(schematic){
                 // render blocks 
@@ -44,19 +54,40 @@ public:
                     auto block_data = block->lib_block.lock();
                     
                     if(block_data){
-                        block_data->Render(block->id);
+                        int id = block_data->Render(block->id);
                     }
                 }
-
             }
 
-            ax::NodeEditor::BeginNode((int)(10 << 8));
-            ImGui::Text("Witam pana");
-            ax::NodeEditor::EndNode();
+            // Setup positions in editor
+            if(schematic && init){
+                for(auto block: schematic->Blocks()){
+                    auto block_data = block->lib_block.lock();
+                    if(block_data){
+                        int id = block_data->GetImnodeID(block->id);
+                        ImVec2 pos = ImVec2(block->pos.x, block->pos.y);
+                        ImNodes::SetNodeGridSpacePos(id, pos);
+                    }
+                }
+            }
+            
+            // Render links
 
-            ax::NodeEditor::End();
-            ax::NodeEditor::SetCurrentEditor(nullptr);
+            if(schematic){
+                for(auto& conn: schematic->Connetions()){
 
+                    // TODO - FINISH THIS
+                  //  conn.
+
+                }
+            }
+
+
+            init = false;
+            
+            ImNodes::EndNodeEditor();
+            ImNodes::EditorContextSet(nullptr);
+            ImNodes::SetCurrentContext(nullptr);
 
         }
         ImGui::End();

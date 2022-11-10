@@ -37,9 +37,6 @@ public:
         event_log("Event Log"),
         schematic_editor("Schematic Editor")
     {
-
-        schematic_editor.SetSchematic(&mainSchematic);
-
         schematic_editor.Show(true);
 
         event_log.Show(true);
@@ -182,7 +179,8 @@ private:
         }
 
         mainSchematic.LinkWithLibrary(&library);
-
+        schematic_editor.SetSchematic(&mainSchematic);
+        
     }
 
 

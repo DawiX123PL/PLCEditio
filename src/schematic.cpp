@@ -222,7 +222,7 @@ Schematic::Error Schematic::ParseJsonBlock(const boost::json::value& js, Block* 
 			if (!IsInt(js_pos_arr->at(1))) return Error::JSON_BLOCK_INVALID_POS;
 
 			block->pos.x = GetInt(js_pos_arr->at(0));
-			block->pos.x = GetInt(js_pos_arr->at(1));
+			block->pos.y = GetInt(js_pos_arr->at(1));
 		}
 		else return Error::JSON_BLOCK_POS_NOT_ARRAY;
 	}

@@ -6,7 +6,7 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 #include <GLFW/glfw3.h>
-
+#include <imnodes.h>
 #include "app.hpp"
 
 
@@ -68,6 +68,9 @@ int main(){
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+    ImNodes::SetCurrentContext(nullptr); // <- prevent creating editor without its own context
+    
+
     ImGuiIO& io = ImGui::GetIO();
 
     io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
@@ -125,6 +128,10 @@ int main(){
 
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
+    
+    // this line might be unnecessary
+    if(ImNodes::GetCurrentContext()) ImNodes::DestroyContext();
+    
     ImGui::DestroyContext();
 
     glfwDestroyWindow(window);

@@ -1,9 +1,9 @@
 {
     "blocks":[
         {"id":1, "pos":[0,0],  "loc":"PROJ", "name":"INPUT"},
-        {"id":2, "pos":[0,2],  "loc":"PROJ", "name":"INPUT"},
-        {"id":3, "pos":[5,0],  "loc":"PROJ", "name":"AND"},
-        {"id":4, "pos":[11,0], "loc":"PROJ", "name":"OUTPUT"}
+        {"id":2, "pos":[0,20],  "loc":"PROJ", "name":"INPUT"},
+        {"id":3, "pos":[50,0],  "loc":"PROJ", "name":"AND"},
+        {"id":4, "pos":[110,0], "loc":"PROJ", "name":"OUTPUT"}
     ],
 
     "connections":[
