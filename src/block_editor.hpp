@@ -92,8 +92,8 @@ public:
                         ImVec2 block_size = ImNodes::GetNodeDimensions(block_id);
                         ImVec2 editor_size = ImGui::GetWindowSize();
                         ImVec2 pos = ImVec2(
-                            block_pos.x - block_size.x / 2 + editor_size.x / 2,
-                            block_pos.y - block_size.y / 2 + editor_size.y / 2
+                            - block_pos.x - block_size.x / 2 + editor_size.x / 2,
+                            - block_pos.y - block_size.y / 2 + editor_size.y / 2
                         );
                         ImNodes::EditorContextResetPanning(pos);
                         center_on_start = false;

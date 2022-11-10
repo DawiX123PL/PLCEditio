@@ -47,6 +47,7 @@ public:
             ImNodes::EditorContextSet(context_editor);
             ImNodes::BeginNodeEditor();
 
+            ImNodes::MiniMap(.1, ImNodesMiniMapLocation_BottomRight);
 
             if(schematic){
                 // render blocks 

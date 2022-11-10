@@ -128,18 +128,15 @@ private:
 
     void FileSelectDialog() {
 
-        // make this dialog fullscreen
-        const ImGuiViewport* viewport = ImGui::GetMainViewport();
-        ImGui::SetNextWindowPos(viewport->WorkPos);
-        ImGui::SetNextWindowSize(viewport->WorkSize);
+        ImGui::OpenPopup("Select project file##PROJECT_FILE_SELECTOR_WINDOW", ImGuiWindowFlags_AlwaysAutoResize);
 
-        ImGuiWindowFlags window_flags 
-            = ImGuiWindowFlags_NoDocking
-            | ImGuiWindowFlags_NoDecoration 
-            | ImGuiWindowFlags_NoMove 
-            | ImGuiWindowFlags_NoSavedSettings;
 
-        if (ImGui::Begin("Select project file", &show_file_select_dialog, window_flags)) {
+        // this forces Popup to show on center
+        if(show_file_select_dialog)
+            ImGui::SetNextWindowPos(ImGui::GetWindowViewport()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+
+
+        if (ImGui::BeginPopupModal("Select project file##PROJECT_FILE_SELECTOR_WINDOW", &show_file_select_dialog)) {
 
             // make window always focused
             ImGui::SetWindowFocus();
@@ -149,13 +146,15 @@ private:
        
             if(ImGui::Button("Cancel")) show_file_select_dialog = false;
             
+            ImGui::SameLine();
+
             if (ImGui::Button("Open")) {
                 LoadProj(file_path);
                 show_file_select_dialog = false;
             }
 
+            ImGui::EndPopup();
         }
-        ImGui::End();
     }
 
 
