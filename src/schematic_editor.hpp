@@ -134,32 +134,36 @@ public:
 
 
             // delete elements 
-            if(ImGui::IsKeyPressed(ImGuiKey_Delete)){
+            if (schematic) {
+                if (ImGui::IsKeyPressed(ImGuiKey_Delete)) {
 
-                // delete blocks 
-                for(auto iter = schematic->blocks.begin(); iter != schematic->blocks.end(); /*none*/){
+                    // delete blocks 
+                    for (auto iter = schematic->blocks.begin(); iter != schematic->blocks.end(); /*none*/) {
 
-                    // check if selected
-                    auto block = *iter;
-                    int id = BlockData::GetImnodeID(block->id);
-                    if(ImNodes::IsNodeSelected(id)){
-                        // delete selected 
-                        iter = schematic->blocks.erase(iter);
-                    }else{
-                        iter++;
+                        // check if selected
+                        auto block = *iter;
+                        int id = BlockData::GetImnodeID(block->id);
+                        if (ImNodes::IsNodeSelected(id)) {
+                            // delete selected 
+                            iter = schematic->blocks.erase(iter);
+                        }
+                        else {
+                            iter++;
+                        }
                     }
-                }
 
-                // delete connections
-                for(auto iter = schematic->connetions.begin(); iter != schematic->connetions.end(); /*none*/){
+                    // delete connections
+                    for (auto iter = schematic->connetions.begin(); iter != schematic->connetions.end(); /*none*/) {
 
-                    // check if selected
-                    auto conn = *iter;
-                    if(ImNodes::IsLinkSelected(conn.id)){
-                        // delete selected 
-                        iter = schematic->connetions.erase(iter);
-                    }else{
-                        iter++;
+                        // check if selected
+                        auto conn = *iter;
+                        if (ImNodes::IsLinkSelected(conn.id)) {
+                            // delete selected 
+                            iter = schematic->connetions.erase(iter);
+                        }
+                        else {
+                            iter++;
+                        }
                     }
                 }
             }
@@ -183,15 +187,16 @@ public:
 
                 bool created_from_stap;
 
-                if(ImNodes::IsLinkCreated(&src_id, &dst_id, &created_from_stap)){
-                    schematic->CreateConnection(
+                if (schematic) {
+                    if (ImNodes::IsLinkCreated(&src_id, &dst_id, &created_from_stap)) {
+                        schematic->CreateConnection(
                             BlockData::ImnodeToID(src_id),
                             BlockData::ImnodeToOutputID(src_id),
                             BlockData::ImnodeToID(dst_id),
                             BlockData::ImnodeToInputID(dst_id)
                         );
+                    }
                 }
-
                 // This migth be useful in checking if new link source and destination have same data type
                 // or something
                 // std::cout << context->HoveredPinIdx.HasValue() << "\n";
