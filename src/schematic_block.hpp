@@ -27,7 +27,7 @@ public:
 private:
 
     std::string name;
-    std::string path;
+    std::filesystem::path path;
 
     std::vector<IO> inputs;
     std::vector<IO> outputs;
@@ -41,7 +41,7 @@ private:
 public:
 
     const std::string& Name(){ return name; };
-    const std::string& Path(){ return path; };
+    const std::filesystem::path& Path(){ return path; };
     const std::vector<IO>& Inputs(){ return inputs; };
     const std::vector<IO>& Outputs(){ return outputs; };
 
@@ -127,7 +127,10 @@ public:
 
     enum class Error{
         OK,
+        PATH_EMPTY,
+        CANNOT_CREATE_PARENT_FOLDER,
         CANNOT_OPEN_FILE,
+        CANNOT_SAVE_FILE,
         JSON_PARSING_ERROR,
         JSON_NOT_AN_OBJECT,
 
@@ -152,14 +155,31 @@ public:
     };
 
 
-    static void LoadProjectLibrary(std::list<BlockData>* library, std::filesystem::path path);
+    void SetDemoBlockData(){
+        try{
+            name = path.stem().string(); // this function can fail sometimes. for some reason.
+        }catch(...){
+            name = "Example Block";
+        }
 
-    Error FromJsonFile(const std::string& _path);
+        inputs.clear();
+        outputs.clear();
+    }
+
+
+    static void LoadProjectLibrary(std::list<BlockData>* library, std::filesystem::path path);
+    static const char* ErrorToStr(Error err);
+
+    Error Save(std::filesystem::path _path);
+    Error Save();
+    Error Read(const std::filesystem::path& _path);
 
 private:
-    Error LoadFile(const std::string& path, std::string* result);    
+    Error SaveFile(const std::filesystem::path& _path, const std::string& data);
+    Error LoadFile(const std::filesystem::path& path, std::string* result);
+
+    Error SerializeJson(std::string* data);
     Error ParseJson(const std::string& str);
-    static const char* ErrorToStr(Error err);
 
 };
 

@@ -28,6 +28,11 @@ class BlockEditor: public WindowObject{
     bool center_on_start;
     int block_id;
 
+    bool no_saved = false;
+
+    bool show_delete_block_popup = false;
+    std::chrono::time_point<std::chrono::high_resolution_clock> delete_button_timeout;
+
 public:
 
     BlockEditor(std::shared_ptr<BlockData> _block): 
@@ -53,6 +58,9 @@ public:
     }
 
 
+    bool IsNoSaved(){return no_saved;}
+
+
     bool IsSameBlockAs(std::shared_ptr<BlockData> b){
         try{
             return b == block.lock();
@@ -76,7 +84,9 @@ public:
         // this prevents ax::NodeEditor::Begin(...) function from crashing (SOMEHOW and only sometimes)
         ImGui::SetNextWindowSizeConstraints(ImVec2(100, 100), ImVec2(10000, 10000));
 
-        if(ImGui::Begin(window_name.c_str(), &show)){
+
+        ImGuiWindowFlags flags = no_saved ? ImGuiWindowFlags_UnsavedDocument : 0;
+        if(ImGui::Begin(window_name.c_str(), &show, flags)){
 
             // block preview
             if(ImGui::Checkbox("Show Preview", &show_prewiev)) show_prewiev != show_prewiev;
@@ -117,12 +127,15 @@ public:
                 ImGui::BeginChild(2);
 
                 std::string name = block_copy.Name();
-                ImGui::InputText("Name", &name);
+                if(ImGui::InputText("Name", &name))no_saved = true;
                 block_copy.SetName(name);
 
-                ImGui::InputInt("Inputs count", &inputs_count, 1, 1);
-                inputs_count = inputs_count > 0 ? inputs_count : 0;
-                inputs_count = inputs_count < io_count_limit ? inputs_count : io_count_limit;
+
+                if(ImGui::InputInt("Inputs count", &inputs_count, 1, 1)){
+                    no_saved = true;
+                    inputs_count = inputs_count > 0 ? inputs_count : 0;
+                    inputs_count = inputs_count < io_count_limit ? inputs_count : io_count_limit;
+                }
 
                 { // Inputs 
                     // unnecessary copy 
@@ -150,13 +163,16 @@ public:
                     block_copy.SetInputs(inputs);
                 }
 
-                ImGui::InputInt("Output count", &outputs_count, 1, 1);
+                if(ImGui::InputInt("Output count", &outputs_count, 1, 1)){
+                    no_saved = true;
+                    outputs_count = outputs_count > 0 ? outputs_count : 0;
+                    outputs_count = outputs_count < io_count_limit ? outputs_count : io_count_limit;
+                }
+
                 { // Inputs 
                     // unnecessary copy 
                     // Fix in future
                     auto outputs = block_copy.Outputs();
-                    outputs_count = outputs_count > 0 ? outputs_count : 0;
-                    outputs_count = outputs_count < io_count_limit ? outputs_count : io_count_limit;
 
                     if(outputs_count != outputs.size()) outputs.resize(outputs_count);
 
@@ -179,11 +195,91 @@ public:
                     block_copy.SetOutputs(outputs);
                 }
 
+                ImGui::Separator();
+                {
+                    if(ImGui::Button("Close", ImVec2(ImGui::GetWindowWidth()/3, 0))) show = false;
+
+                    ImGui::SameLine();
+                    if(ImGui::Button("Save", ImVec2(ImGui::GetWindowWidth()/3, 0))){
+                        auto block_ptr = block.lock();
+                        if(block_ptr){
+                            *block_ptr = block_copy;
+                            block_ptr->Save();
+                            no_saved = false;    
+                        } 
+                    } 
+
+                    ImGui::SameLine();
+                    if(ImGui::Button("Delete", ImVec2(ImGui::GetWindowWidth()/3, 0))){
+                        auto block_ptr = block.lock();
+                        if(block_ptr){
+                            show_delete_block_popup = true;
+                            
+                            delete_button_timeout = std::chrono::high_resolution_clock::now() + std::chrono::seconds(7);
+                        }
+                    } 
+                }
+
                 ImGui::EndChild();
             }
 
         }
+
         ImGui::End();
+
+        if(show_delete_block_popup)
+            DeleteBlockPopup();
+    }
+
+
+private:
+
+    void DeleteBlockPopup(){
+        
+        ImGui::OpenPopup("Delete block ?");
+
+        if(show_delete_block_popup)
+            ImGui::SetNextWindowPos(ImGui::GetWindowViewport()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+
+        // delete block popup;
+        if(ImGui::BeginPopupModal("Delete block ?", &show_delete_block_popup)){
+
+            auto block_ptr = block.lock();
+            if(!block_ptr) show_delete_block_popup = false;
+
+            std::string msg = "Are you sure you want to delete block: " 
+                            + block_ptr->Name() 
+                            + "? \n\nName = " 
+                            + block_ptr->Name()
+                            + "\nPath = ";
+
+            try{msg += block_ptr->Path().string();}catch(...){}
+
+            ImGui::TextWrapped(msg.c_str());
+            ImGui::TextColored(ImColor(255,0,0,255), "This operation cannot be undone !!!");
+
+            namespace ch = std::chrono;
+            int seconds =  ch::duration_cast<ch::seconds>(delete_button_timeout - ch::high_resolution_clock::now()).count();
+
+            std::string delete_button_text = "Delete";
+            if(seconds > 0) delete_button_text += " " + std::to_string(seconds);
+
+
+            ImGui::Separator();
+            if(ImGui::Button("Cancel", ImVec2(ImGui::GetWindowWidth()/2, 0))) show_delete_block_popup = false;
+            
+            ImGui::SameLine();
+            ImGui::BeginDisabled(seconds > 0);
+            if(ImGui::Button(delete_button_text.c_str(), ImVec2(ImGui::GetWindowWidth() / 2, 0))){
+                // TODO: Handle block deletion
+                show_delete_block_popup = false;
+                show = false;
+            }
+            ImGui::EndDisabled();
+
+
+            ImGui::EndPopup();
+        }
     }
 
 

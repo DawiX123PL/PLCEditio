@@ -4,34 +4,125 @@
 const char* BlockData::ErrorToStr(Error err) {
     switch (err)
     {
+
     case Error::OK: return "OK";
+    case Error::PATH_EMPTY: return "PATH_EMPTY";
+    case Error::CANNOT_CREATE_PARENT_FOLDER: return "CANNOT_CREATE_PARENT_FOLDER";
     case Error::CANNOT_OPEN_FILE: return "CANNOT_OPEN_FILE";
+    case Error::CANNOT_SAVE_FILE: return "CANNOT_SAVE_FILE";
     case Error::JSON_PARSING_ERROR: return "JSON_PARSING_ERROR";
     case Error::JSON_NOT_AN_OBJECT: return "JSON_NOT_AN_OBJECT";
     case Error::JSON_NAME_NOT_A_STRING: return "JSON_NAME_NOT_A_STRING";
     case Error::JSON_MISSING_NAME_FIELD: return "JSON_MISSING_NAME_FIELD";
+    case Error::JSON_INPUTS_EL_LABEL_NOT_A_STRING: return "JSON_INPUTS_EL_LABEL_NOT_A_STRING";
+    case Error::JSON_INPUTS_EL_TYPE_NOT_A_STRING: return "JSON_INPUTS_EL_TYPE_NOT_A_STRING";
     case Error::JSON_INPUTS_EL_MISSING_LABEL: return "JSON_INPUTS_EL_MISSING_LABEL";
     case Error::JSON_INPUTS_EL_MISSING_TYPE: return "JSON_INPUTS_EL_MISSING_TYPE";
     case Error::JSON_INPUTS_EL_NOT_AN_OBJECT: return "JSON_INPUTS_EL_NOT_AN_OBJECT";
     case Error::JSON_INPUTS_NOT_AN_ARRAY: return "JSON_INPUTS_NOT_AN_ARRAY";
     case Error::JSON_MISSING_INPUTS_FIELD: return "JSON_MISSING_INPUTS_FIELD";
+    case Error::JSON_OUTPUTS_EL_LABEL_NOT_A_STRING: return "JSON_OUTPUTS_EL_LABEL_NOT_A_STRING";
+    case Error::JSON_OUTPUTS_EL_TYPE_NOT_A_STRING: return "JSON_OUTPUTS_EL_TYPE_NOT_A_STRING";
     case Error::JSON_OUTPUTS_EL_MISSING_LABEL: return "JSON_OUTPUTS_EL_MISSING_LABEL";
     case Error::JSON_OUTPUTS_EL_MISSING_TYPE: return "JSON_OUTPUTS_EL_MISSING_TYPE";
     case Error::JSON_OUTPUTS_EL_NOT_AN_OBJECT: return "JSON_OUTPUTS_EL_NOT_AN_OBJECT";
     case Error::JSON_OUTPUTS_NOT_AN_ARRAY: return "JSON_OUTPUTS_NOT_AN_ARRAY";
     case Error::JSON_MISSING_OUTPUTS_FIELD: return "JSON_MISSING_OUTPUTS_FIELD";
+
     default: return "Unnown Error";
     }
 }
 
 
+BlockData::Error BlockData::Save(std::filesystem::path _path){
+    if(_path.empty()) return Error::PATH_EMPTY;
+    path = _path;
+    return Save();
+}
 
-BlockData::Error BlockData::FromJsonFile(const std::string &_path)
+
+
+BlockData::Error BlockData::Save(){
+    if(path.empty()) return Error::PATH_EMPTY;
+
+    // create parent folder for all block files
+    {
+        std::error_code err;
+        std::filesystem::create_directory(path, err);
+        if(err) return Error::CANNOT_CREATE_PARENT_FOLDER;
+    }
+
+    Error err;
+    std::string data;
+    
+    err = SerializeJson(&data);
+    if(err != Error::OK) return err;
+
+    std::filesystem::path data_path = path / path.stem().concat(".json");
+    err = SaveFile(data_path, data);
+    return err;
+}
+
+
+
+
+
+BlockData::Error BlockData::SaveFile(const std::filesystem::path& _path, const std::string& data){
+    std::fstream file(_path, std::ios::out | std::ios::binary);
+
+    if(!file.is_open()) return Error::CANNOT_SAVE_FILE;
+    if(!file.good()) return Error::CANNOT_SAVE_FILE;
+
+    try{ // try-catch just in case 
+        size_t count = data.size();
+        const char* data_ptr = data.c_str();
+
+        file.write(data_ptr, count);
+        if(!file.is_open()) return Error::CANNOT_SAVE_FILE;
+        if(!file.good()) return Error::CANNOT_SAVE_FILE;
+    }catch(...){
+        return Error::CANNOT_SAVE_FILE;
+    }
+
+    return Error::OK; 
+}
+
+
+
+BlockData::Error BlockData::SerializeJson(std::string* data){
+    
+    boost::json::array js_inputs;
+    for(const auto& i: inputs)
+        js_inputs.push_back({{"label",i.label}, {"type", i.type}});
+
+    boost::json::array js_outputs;
+    for(const auto& o: outputs)
+        js_outputs.push_back({{"label",o.label}, {"type", o.type}});
+
+
+    boost::json::object js;
+
+    js["name"] = name;
+    js.insert(boost::json::object::value_type("inputs", js_inputs));
+    js.insert(boost::json::object::value_type("outputs",js_outputs));
+
+    *data = boost::json::serialize(js);
+
+    return Error::OK;
+}
+
+
+
+
+BlockData::Error BlockData::Read(const std::filesystem::path &_path)
 {
+    if(_path.empty()) return Error::PATH_EMPTY;
     path = _path;
 
     std::string file_data;
-    Error err = LoadFile(_path, &file_data);
+
+    std::filesystem::path data_path = path / _path.stem().concat(".json");
+    Error err = LoadFile(data_path, &file_data);
     if (err != Error::OK)
         return err;
 
@@ -41,11 +132,11 @@ BlockData::Error BlockData::FromJsonFile(const std::string &_path)
 
 
 
-BlockData::Error BlockData::LoadFile(const std::string &path, std::string *result)
+BlockData::Error BlockData::LoadFile(const std::filesystem::path &_path, std::string *result)
 {
     try
     {
-        std::fstream file(path, std::ios::binary | std::ios::in);
+        std::fstream file(_path, std::ios::binary | std::ios::in);
 
         if (!file.is_open())
             return Error::CANNOT_OPEN_FILE;
@@ -194,6 +285,8 @@ BlockData::Error BlockData::ParseJson(const std::string &str)
     }
     else
         return Error::JSON_MISSING_OUTPUTS_FIELD;
+
+    return Error::OK;
 }
 
 
@@ -217,23 +310,12 @@ void BlockData::LoadProjectLibrary(std::list<BlockData>* library, std::filesyste
         const auto lib_block_name = dir_entry.path().stem().concat(".json");
         std::cout << "Stem : " << lib_block_name << "\n";
 
-        const auto block_desc_file_path = dir_entry.path() / lib_block_name;
-        std::filesystem::directory_entry block_desc_file(block_desc_file_path);
+        BlockData block;
+        Error err = block.Read(dir_entry.path());
 
+        if(err != Error::OK) continue;
 
-        if (!block_desc_file.is_regular_file()) continue;
-
-        std::string block_desc_path_str;
-        try{
-            block_desc_path_str = block_desc_file_path.string();
-        }catch(...){
-            continue;
-        }
-
-        library->emplace_back();
-        library->back().FromJsonFile(block_desc_path_str);
-
-        
+        library->push_back(block);
     }
 
 }

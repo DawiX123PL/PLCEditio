@@ -20,6 +20,8 @@ public:
     bool show_file_select_dialog = false;
     bool show_PLC_connection_dialog = false;
 
+    bool show_create_block_dialog = false;
+
     DebugLogger PLC_connection_log;
 
     DebugLogger event_log;
@@ -81,6 +83,9 @@ public:
         if (show_file_select_dialog)
             FileSelectDialog();
 
+        if (show_create_block_dialog)
+            BlockCreateDialog();
+
         if (show_PLC_connection_dialog)
             PLCConnectionDialog();
 
@@ -95,6 +100,7 @@ private:
         ImGui::BeginMainMenuBar();
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Open Project")) show_file_select_dialog = true;
+            if (ImGui::MenuItem("New Block")) show_create_block_dialog = true;
             ImGui::EndMenu();
         }
 
@@ -146,11 +152,11 @@ private:
             ImGui::Text("Enter project path");
             ImGui::InputText("Path", file_path, file_path_max_len);
        
-            if(ImGui::Button("Cancel")) show_file_select_dialog = false;
+            ImGui::Separator();
+            if(ImGui::Button("Cancel", ImVec2(ImGui::GetWindowSize().x*0.5f, 20))) show_file_select_dialog = false;
             
             ImGui::SameLine();
-
-            if (ImGui::Button("Open")) {
+            if (ImGui::Button("Open", ImVec2(ImGui::GetWindowSize().x*0.5f, 20))) {
                 LoadProj(file_path);
                 show_file_select_dialog = false;
             }
@@ -182,6 +188,102 @@ private:
         mainSchematic.LinkWithLibrary(&library);
         schematic_editor.SetSchematic(&mainSchematic);
         schematic_editor.SetLibrary(&library);
+    }
+
+
+    std::string block_create_new_name;
+    std::string block_create_new_path;
+    bool block_create_insert_path = false;
+    bool block_create_editor_after_creation = true;
+
+    void BlockCreateDialog(){
+
+        ImGui::OpenPopup("Create New Block");
+
+        ImGui::SetNextWindowPos(ImGui::GetWindowViewport()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+
+        if(ImGui::BeginPopupModal("Create New Block", &show_create_block_dialog)){
+            bool can_create = true;
+
+            if(ImGui::Checkbox("Different block path", &block_create_insert_path)) block_create_insert_path != block_create_insert_path;
+
+            ImGui::BeginDisabled(block_create_insert_path);
+            ImGui::InputText("Name", &block_create_new_name);
+            ImGui::EndDisabled();
+
+            ImGui::BeginDisabled(!block_create_insert_path);
+            ImGui::InputText("Path", &block_create_new_path );
+            ImGui::EndDisabled();
+
+
+            std::filesystem::path path;
+            
+            if(!block_create_insert_path){
+                path = mainSchematic.Path().parent_path() / (block_create_new_name + ".block");
+                try{ block_create_new_path = path.string(); } catch(...){}
+            }else{
+                path = block_create_new_path;
+                try{ block_create_new_name = path.stem().string(); } catch(...){}
+            }
+
+            bool is_exists = std::filesystem::exists(path);
+            
+            
+            if(is_exists){ 
+                ImGui::TextColored(ImColor(255,0,0,255), "Block with that name already exists");
+                can_create = false;
+            }
+
+            if(block_create_new_name.empty()){
+                ImGui::TextColored(ImColor(255,0,0,255), "Name cannot be empty");
+                can_create = false;
+            }
+            if(block_create_new_path.empty()){
+                ImGui::TextColored(ImColor(255,0,0,255), "Path cannot be empty");
+                can_create = false;
+            }
+
+
+
+
+            if(ImGui::Checkbox("Open editor after creation", &block_create_editor_after_creation)) block_create_editor_after_creation != block_create_editor_after_creation;
+
+
+            ImGui::Separator();
+            if(ImGui::Button("Cancel", ImVec2(ImGui::GetWindowSize().x*0.5f, 20))) show_create_block_dialog = false;
+           
+            ImGui::SameLine();
+
+            ImGui::BeginDisabled(!can_create);
+            if (ImGui::Button("Create", ImVec2(ImGui::GetWindowSize().x*0.5f, 20))) {
+
+                // create new block and save on hard drive
+                BlockData block;
+                BlockData::Error err =  block.Save(path);
+                if(err == BlockData::Error::OK){
+                    auto block_ptr = std::make_shared<BlockData>(block);
+                    block_ptr->SetDemoBlockData();
+
+                    library.push_back(block_ptr);
+
+                    if(block_create_editor_after_creation)
+                        block_editors.emplace_back(block_ptr); // open editor after creation 
+
+                    event_log.PushBack(DebugLogger::Priority::SUCCESS, "Created new block");
+                }else{
+                    std::string msg = std::string({"Cannot create new block: ", BlockData::ErrorToStr(err)});
+                    event_log.PushBack(DebugLogger::Priority::ERROR, msg);
+                }
+
+
+                show_create_block_dialog = false;
+            }
+            ImGui::EndDisabled();
+
+            ImGui::EndPopup();
+        }
+
+
     }
 
 
