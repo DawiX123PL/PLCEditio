@@ -43,6 +43,26 @@ public:
     }
 
 
+    void StoreBlocksPositions(){
+
+        if(!schematic) return;
+
+        ImNodes::SetCurrentContext(context);
+        ImNodes::EditorContextSet(context_editor);
+
+        for(auto& b: schematic->blocks){
+            ImVec2 pos = ImNodes::GetNodeEditorSpacePos(BlockData::GetImnodeID(b->id));
+            b->pos.x = pos.x;
+            b->pos.y = pos.y;
+        }
+
+        ImNodes::EditorContextSet(nullptr);
+        ImNodes::SetCurrentContext(nullptr);
+    }
+
+
+
+
     void Render() override{
         
         if (!show) return;

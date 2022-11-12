@@ -8,6 +8,8 @@ const char* Schematic::ErrorToStr(Error err) {
 	switch (err) {
 	case Error::OK: return "OK";
 	case Error::CANNOT_OPEN_FILE: return "CANNOT_OPEN_FILE";
+	case Error::CANNOT_SAVE_FILE: return "CANNOT_SAVE_FILE";
+	case Error::PATH_EMPTY: return "PATH_EMPTY";
 	case Error::JSON_PARSING_ERROR: return "JSON_PARSING_ERROR";
 	case Error::JSON_NOT_AN_OBJECT: return "JSON_NOT_AN_OBJECT";
 	case Error::JSON_MISSING_BLOCKS_FIELD: return "JSON_MISSING_BLOCKS_FIELD";
@@ -38,7 +40,7 @@ const char* Schematic::ErrorToStr(Error err) {
 }
 
 
-Schematic::Error Schematic::LoadFromJsonFile(std::string _path) {
+Schematic::Error Schematic::Read(const std::filesystem::path& _path) {
 
 
 	path = _path;
@@ -83,6 +85,27 @@ Schematic::Error Schematic::LoadFile(const std::filesystem::path& path, std::str
 	}
 }
 
+
+
+Schematic::Error Schematic::SaveFile(const std::filesystem::path& _path, const std::string& data){
+    std::fstream file(_path, std::ios::out | std::ios::binary);
+
+    if(!file.is_open()) return Error::CANNOT_SAVE_FILE;
+    if(!file.good()) return Error::CANNOT_SAVE_FILE;
+
+    try{ // try-catch just in case 
+        size_t count = data.size();
+        const char* data_ptr = data.c_str();
+
+        file.write(data_ptr, count);
+        if(!file.is_open()) return Error::CANNOT_SAVE_FILE;
+        if(!file.good()) return Error::CANNOT_SAVE_FILE;
+    }catch(...){
+        return Error::CANNOT_SAVE_FILE;
+    }
+
+    return Error::OK; 
+}
 
 
 

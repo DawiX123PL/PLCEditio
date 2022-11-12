@@ -82,6 +82,8 @@ public:
 		OK,
 
 		CANNOT_OPEN_FILE,
+		CANNOT_SAVE_FILE,
+		PATH_EMPTY,
 		JSON_PARSING_ERROR,
 		JSON_NOT_AN_OBJECT,
 
@@ -172,13 +174,101 @@ public:
 
 	static const char* ErrorToStr(Error err);
 
-	Error LoadFromJsonFile(std::string path);
+
+	Error Save(const std::filesystem::path& _path){
+		if(_path.empty()) return Error::PATH_EMPTY;
+		path = _path;
+		return Save();
+	}
+
+
+	Error Save(){
+		if (path.empty()) return Error::PATH_EMPTY;
+
+		std::string data;
+		Error err;
+
+		err = Serialize(&data);
+		if(err != Error::OK) return err;
+
+		err = SaveFile(path, data);
+		return err;
+	}
+
+
+
+
+
+	Error Read(const std::filesystem::path& _path);
 
 private:
-	Error LoadFile(const std::filesystem::path& path, std::string* result);
+    Error SaveFile(const std::filesystem::path& _path, const std::string& data);
+    Error LoadFile(const std::filesystem::path& path, std::string* result);
+
 	Error ParseJson(const std::string& data_str);
 	Error ParseJsonBlock(const boost::json::value& js, Block* block);
 	Error ParseJsonConnection(const boost::json::value& js, ConnectionRaw* conn);
+
+	Error Serialize(std::string* data) {
+
+		boost::json::array js_blocks;
+
+		for (const auto& block_ptr : blocks) {
+			if (!block_ptr) continue;
+
+			std::string loc;
+			switch (block_ptr->location)
+			{
+			case Schematic::Block::Location::PROJECT: loc = "PROJ"; break;
+			case Schematic::Block::Location::EXTERNAL: loc = "EXTERN"; break;
+			case Schematic::Block::Location::STD: loc = "STD"; break;
+			default: loc = "PROJ"; break;
+			};
+
+			boost::json::value js_block = {
+				{"id", block_ptr->id},
+				{"pos", boost::json::array({block_ptr->pos.x, block_ptr->pos.y })},
+				{"loc", loc},
+				{"name", block_ptr->name},
+			};
+
+			js_blocks.push_back(js_block);
+		}
+
+		boost::json::array js_connections;
+
+		for (const auto& conn : connetions) {
+
+			int src_id = -1;
+			int dst_id = -1;
+
+			auto src = conn.src.lock();
+			auto dst = conn.dst.lock();
+			if (!src || !dst) continue;
+
+			src_id = src->id;
+			dst_id = dst->id;
+
+
+			boost::json::value js_conn = {
+				{"src",     src_id},
+				{"src_pin", conn.src_pin},
+				{"dst",     dst_id},
+				{"dst_pin", conn.dst_pin},
+			};
+
+			js_connections.push_back(js_conn);
+		}
+
+		boost::json::object js;
+
+		js["blocks"] = js_blocks;
+		js["connections"] = js_connections;
+
+		*data = boost::json::serialize(js);
+
+		return Error::OK;
+	}
 
 };
 
