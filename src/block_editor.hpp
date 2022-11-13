@@ -266,6 +266,10 @@ private:
 
 
             ImGui::Separator();
+            ImGui::TextColored(ImColor(255,187,0), "This operation is not yet implemented");
+
+
+            ImGui::Separator();
             if(ImGui::Button("Cancel", ImVec2(ImGui::GetWindowWidth()/2, 0))) show_delete_block_popup = false;
             
             ImGui::SameLine();

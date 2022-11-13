@@ -290,6 +290,7 @@ private:
         }
 
         mainSchematic.LinkWithLibrary(&library);
+        mainSchematic.RemoveInvalidElements();
         schematic_editor.SetSchematic(&mainSchematic);
         schematic_editor.SetLibrary(&library);
     }
@@ -363,7 +364,9 @@ private:
 
                 // create new block and save on hard drive
                 BlockData block;
-                BlockData::Error err =  block.Save(path);
+                BlockData::Error err = block.Save(path);
+                block.SetLibraryRoot(mainSchematic.Path().parent_path());
+
                 if(err == BlockData::Error::OK){
                     auto block_ptr = std::make_shared<BlockData>(block);
                     block_ptr->SetDemoBlockData();

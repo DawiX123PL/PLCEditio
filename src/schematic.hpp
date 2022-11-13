@@ -20,6 +20,13 @@ class Schematic {
 		std::string name;
 		enum class Location{PROJECT, STD, EXTERNAL} location;
 		struct Pos { int x; int y; } pos;
+
+		bool IsValid(){
+			if(id <= 0) return false;
+			if(!lib_block.lock()) return false;
+			if(name.empty()) return false;
+			return true;
+		}
 	};
 
 	struct Connection {
@@ -36,6 +43,35 @@ class Schematic {
 		bool verify() {
 			if (src.expired()) return false;
 			if (dst.expired()) return false;
+			return true;
+		}
+
+		bool IsValid(){
+			// test if pin ids are valid number
+			if(src_pin < 0) return false;
+			if(dst_pin < 0) return false;
+
+			// test if connection is created between valid blocks
+			if (src.expired()) return false;
+			if (dst.expired()) return false;
+
+			auto src_ptr = src.lock();
+			auto dst_ptr = dst.lock();
+
+			if (src_ptr) return false; // this migth be redundant
+			if (dst_ptr) return false; // this migth be redundant
+
+			// test if source and dest blocks are valid
+			if(!src_ptr->IsValid()) return false;
+			if(!dst_ptr->IsValid()) return false;
+
+			// test if connection is created between valid inputs/outputs
+			auto src_data_ptr = src_ptr->lib_block.lock();
+			auto dst_data_ptr = dst_ptr->lib_block.lock();
+
+			if(src_data_ptr->Outputs().size() < src_pin) return false;
+			if(dst_data_ptr->Inputs().size() < dst_pin) return false;
+
 			return true;
 		}
 	};
@@ -170,6 +206,29 @@ public:
 		}
 
 	}
+
+
+
+	void RemoveInvalidElements(){
+
+		blocks.remove_if(
+			[](std::shared_ptr<Block>& block)
+			{
+				if(!block) return true;
+				if(!block->IsValid()) return true;
+				return false;
+			} 
+			);
+
+		connetions.remove_if(
+			[](Connection& conn)
+			{
+				return conn.IsValid();
+			}
+		);
+
+	}
+
 
 
 	static const char* ErrorToStr(Error err);
