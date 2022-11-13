@@ -126,9 +126,9 @@ public:
             { // block edition
                 ImGui::BeginChild(2);
 
-                std::string name = block_copy.Name();
-                if(ImGui::InputText("Name", &name))no_saved = true;
-                block_copy.SetName(name);
+                std::string title = block_copy.Title();
+                if(ImGui::InputText("Name", &title))no_saved = true;
+                block_copy.SetTitle(title);
 
 
                 if(ImGui::InputInt("Inputs count", &inputs_count, 1, 1)){

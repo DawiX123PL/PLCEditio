@@ -36,7 +36,7 @@ const char* BlockData::ErrorToStr(Error err) {
 
 BlockData::Error BlockData::Save(std::filesystem::path _path){
     if(_path.empty()) return Error::PATH_EMPTY;
-    path = _path;
+    SetPath(_path);
     return Save();
 }
 
@@ -102,7 +102,7 @@ BlockData::Error BlockData::SerializeJson(std::string* data){
 
     boost::json::object js;
 
-    js["name"] = name;
+    js["title"] = title;
     js.insert(boost::json::object::value_type("inputs", js_inputs));
     js.insert(boost::json::object::value_type("outputs",js_outputs));
 
@@ -117,7 +117,8 @@ BlockData::Error BlockData::SerializeJson(std::string* data){
 BlockData::Error BlockData::Read(const std::filesystem::path &_path)
 {
     if(_path.empty()) return Error::PATH_EMPTY;
-    path = _path;
+
+    SetPath(_path);
 
     std::string file_data;
 
@@ -185,12 +186,12 @@ BlockData::Error BlockData::ParseJson(const std::string &str)
     auto js_obj = js.as_object();
 
     // 'name' field
-    if (auto js_name = js_obj.if_contains("name"))
+    if (auto js_title = js_obj.if_contains("title"))
     {
-        if (auto str = js_name->if_string())
+        if (auto str = js_title->if_string())
         {
 
-            name = *str;
+            title = *str;
         }
         else
             return Error::JSON_NAME_NOT_A_STRING;
@@ -312,6 +313,7 @@ void BlockData::LoadProjectLibrary(std::list<BlockData>* library, std::filesyste
 
         BlockData block;
         Error err = block.Read(dir_entry.path());
+        block.SetLibraryRoot(path);
 
         if(err != Error::OK) continue;
 
