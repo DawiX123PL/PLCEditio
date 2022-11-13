@@ -48,7 +48,7 @@ set(IMNODES
 
 add_executable(PLCEditio 
             ${IMGUI} 
-            ${IMGUI_NODE_EDITOR}
+            # ${IMGUI_NODE_EDITOR}
             ${IMNODES}
             "./src/main.cpp"
             "./src/app.hpp"
@@ -67,6 +67,7 @@ add_executable(PLCEditio
             "./src/window_object.hpp"
             "./src/block_editor.cpp"
             "./src/block_editor.hpp"
+            "./src/librarian.hpp"
             )
 
 add_subdirectory("libs/glfw")
