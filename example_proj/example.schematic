@@ -1,14 +1,75 @@
 {
-    "blocks":[
-        {"id":1, "pos":[0,0],  "loc":"PROJ", "name":"INPUT"},
-        {"id":2, "pos":[0,100],  "loc":"PROJ", "name":"INPUT"},
-        {"id":3, "pos":[100,0],  "loc":"PROJ", "name":"AND"},
-        {"id":4, "pos":[200,0], "loc":"PROJ", "name":"OUTPUT"}
+    "blocks": [
+        {
+            "id": 1,
+            "pos": [
+                263,
+                179
+            ],
+            "loc": "PROJ",
+            "name": "input"
+        },
+        {
+            "id": 2,
+            "pos": [
+                266,
+                249
+            ],
+            "loc": "PROJ",
+            "name": "input"
+        },
+        {
+            "id": 3,
+            "pos": [
+                361,
+                194
+            ],
+            "loc": "PROJ",
+            "name": "and"
+        },
+        {
+            "id": 4,
+            "pos": [
+                443,
+                253
+            ],
+            "loc": "PROJ",
+            "name": "output"
+        },
+        {
+            "id": 7,
+            "pos": [
+                445,
+                182
+            ],
+            "loc": "PROJ",
+            "name": "output"
+        }
     ],
-
-    "connections":[
-        {"src": 1,"src_pin": 0, "dst":3, "dst_pin":0},
-        {"src": 2,"src_pin": 0, "dst":3, "dst_pin":1},
-        {"src": 3,"src_pin": 1, "dst":4, "dst_pin":0}
+    "connections": [
+        {
+            "src": 1,
+            "src_pin": 0,
+            "dst": 3,
+            "dst_pin": 0
+        },
+        {
+            "src": 2,
+            "src_pin": 0,
+            "dst": 3,
+            "dst_pin": 1
+        },
+        {
+            "src": 3,
+            "src_pin": 1,
+            "dst": 4,
+            "dst_pin": 0
+        },
+        {
+            "src": 3,
+            "src_pin": 0,
+            "dst": 7,
+            "dst_pin": 0
+        }
     ]
 }

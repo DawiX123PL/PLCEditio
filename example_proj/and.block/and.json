@@ -1,5 +1,5 @@
 {
-    "name":"AND",
+    "title":"and",
     "inputs":[
         {"label": "A", "type": "bool"},
         {"label": "B", "type": "bool"}
