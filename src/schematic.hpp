@@ -18,13 +18,16 @@ class Schematic {
 		std::weak_ptr<BlockData> lib_block;
 		int id;
 		std::string full_name;
-		enum class Location{PROJECT, STD, EXTERNAL} location;
 		struct Pos { int x; int y; } pos;
 
 		std::string GetFullName(){
 			auto block_data = lib_block.lock();
-			if(!block_data) return full_name;
-			else return block_data->FullName();
+			std::string n;
+			if(!block_data) 
+				n = full_name;
+			else 
+				n = block_data->FullName();
+			return n;
 		}
 
 		bool IsValid(){
@@ -186,7 +189,6 @@ public:
 		Block b;
 		b.id = next_block_id++;
 		b.lib_block = block_data;
-		b.location = Block::Location::PROJECT;
 		b.full_name = block_data->Name();
 		b.pos.x = x;
 		b.pos.y = y;
@@ -286,19 +288,9 @@ private:
 		for (const auto& block_ptr : blocks) {
 			if (!block_ptr) continue;
 
-			std::string loc;
-			switch (block_ptr->location)
-			{
-			case Schematic::Block::Location::PROJECT: loc = "PROJ"; break;
-			case Schematic::Block::Location::EXTERNAL: loc = "EXTERN"; break;
-			case Schematic::Block::Location::STD: loc = "STD"; break;
-			default: loc = "PROJ"; break;
-			};
-
 			boost::json::value js_block = {
 				{"id", block_ptr->id},
 				{"pos", boost::json::array({block_ptr->pos.x, block_ptr->pos.y })},
-				{"loc", loc},
 				{"name", block_ptr->GetFullName()},
 			};
 

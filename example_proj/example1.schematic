@@ -3,65 +3,73 @@
         {
             "id": 5,
             "pos": [
-                379,
-                165
+                434,
+                153
             ],
+            "loc": "PROJ",
             "name": "\\LOCAL\\and"
         },
         {
             "id": 6,
             "pos": [
-                221,
-                156
+                276,
+                144
             ],
+            "loc": "PROJ",
             "name": "\\LOCAL\\input"
         },
         {
             "id": 7,
             "pos": [
-                223,
-                225
+                278,
+                213
             ],
+            "loc": "PROJ",
             "name": "\\LOCAL\\input"
         },
         {
             "id": 8,
             "pos": [
-                512,
-                153
+                567,
+                141
             ],
+            "loc": "PROJ",
             "name": "\\LOCAL\\output"
         },
         {
             "id": 9,
             "pos": [
-                518,
-                228
+                573,
+                216
             ],
+            "loc": "PROJ",
             "name": "\\LOCAL\\output"
         },
         {
             "id": 10,
             "pos": [
-                497,
-                321
+                552,
+                309
             ],
+            "loc": "PROJ",
             "name": "\\LOCAL\\output"
         },
         {
             "id": 11,
             "pos": [
-                376,
-                313
+                431,
+                301
             ],
+            "loc": "PROJ",
             "name": "\\LOCAL\\L1\\test1"
         },
         {
             "id": 12,
             "pos": [
-                502,
-                385
+                557,
+                373
             ],
+            "loc": "PROJ",
             "name": "\\LOCAL\\test1"
         }
     ],

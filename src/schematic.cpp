@@ -272,21 +272,6 @@ Schematic::Error Schematic::ParseJsonBlock(const boost::json::value& js, Block* 
 	}
 	else return Error::JSON_BLOCK_MISSING_NAME;
 
-	// get location
-	if (auto js_loc = js_obj.if_contains("loc")) {
-		if (auto js_loc_str = js_loc->if_string()) {
-			std::string location(js_loc_str->begin(), js_loc_str->end());
-
-			if (location == "PROJ") block->location = Block::Location::PROJECT;
-			else if (location == "EXTERN") block->location = Block::Location::EXTERNAL;
-			else if (location == "STD") block->location = Block::Location::STD;
-			else return Error::JSON_BLOCK_INVALID_LOC;
-		}
-		else return Error::JSON_BLOCK_LOC_NOT_STRING;
-	}
-	else return Error::JSON_BLOCK_MISSING_LOC;
-
-
 	return Error::OK;
 }
 

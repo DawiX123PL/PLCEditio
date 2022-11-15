@@ -67,6 +67,7 @@ add_executable(PLCEditio
             "./src/window_object.hpp"
             "./src/block_editor.cpp"
             "./src/block_editor.hpp"
+            "./src/librarian.cpp"
             "./src/librarian.hpp"
             )
 

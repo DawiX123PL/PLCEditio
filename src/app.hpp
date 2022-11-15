@@ -481,7 +481,7 @@ private:
 
                 if (ImGui::TreeNode("Blocks")) {                    
 
-                    ShowProjectTreeBlockLib(library1.GetProjectLib());
+                    ShowProjectTreeBlockLib(library1.GetLib());
                     
                     
                     // for (const auto& block : library) {

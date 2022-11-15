@@ -92,7 +92,7 @@ public:
                 
                 if(ImGui::BeginMenu("Add")){
                     
-                    RenderAddPopup(library->GetProjectLib(), click_pos);
+                    RenderAddPopup(library->GetLib(), click_pos);
 
                     // if (library) {
                     //     for (auto block : *library) {

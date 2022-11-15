@@ -28,9 +28,8 @@ private:
 
     std::string title;
     std::filesystem::path path;
-    std::filesystem::path library_root;
     std::string name;       
-    std::string full_name;  // full_name is related to block path 
+    std::string name_prefix;  // full_name is related to block path 
                             // full_name = path - library_root - extensions;
                             // eg.: 
                             //    
@@ -59,45 +58,19 @@ public:
     const std::vector<IO>& Outputs(){ return outputs; };
 
     const std::string& Name(){return name;}
-    const std::string& FullName(){return full_name;}
+    const std::string FullName(){return name_prefix + "\\" + name;}
+
+    void SetName(std::string n){ name = n; }
+    void SetNamePrefix(std::string n){ name_prefix = n; }
 
 
     void SetTitle(const std::string& _title){ title = _title; };
     void SetPath(const std::filesystem::path& _path){ 
         path = _path;
-        CalculateName();
     };
-
-    void SetLibraryRoot(const std::filesystem::path& _path){
-        library_root = _path;
-        CalculateName();
-    }
 
     void SetInputs(const std::vector<IO>& _inputs){ inputs = _inputs; };
     void SetOutputs(const std::vector<IO>& _outputs){ outputs = _outputs; };
-
-private:
-    void CalculateName(){
-        // get block name
-        try{
-            name = path.stem().string();
-        }catch(...){
-            name = "????";
-        };
-
-        // get block full name
-        std::error_code err;
-        std::filesystem::path p1 = std::filesystem::relative(path, library_root, err).lexically_normal();
-        full_name = name;
-        while(p1.has_parent_path()){
-            p1 = p1.parent_path();
-            try{
-                full_name = p1.stem().string() + "\\" + full_name;
-            }catch(...){
-                full_name = "???\\" + full_name;
-            }
-        }
-    }
 
 public:
 
@@ -215,7 +188,6 @@ public:
     }
 
 
-    static void LoadProjectLibrary(std::list<BlockData>* library, std::filesystem::path path);
     static const char* ErrorToStr(Error err);
 
     Error Save(std::filesystem::path _path);

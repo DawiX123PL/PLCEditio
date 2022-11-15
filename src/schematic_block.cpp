@@ -290,34 +290,3 @@ BlockData::Error BlockData::ParseJson(const std::string &str)
     return Error::OK;
 }
 
-
-
-// TODO: finish this function ASAP
-void BlockData::LoadProjectLibrary(std::list<BlockData>* library, std::filesystem::path path){
-
-    if(!library) return;
-    if (!std::filesystem::is_directory(path)) return;
-
-
-
-    std::filesystem::directory_iterator dir(path);
-
-    for(const auto& dir_entry : dir){
-        if(!dir_entry.is_directory()) continue;
-        if(dir_entry.path().extension() != ".block") continue;
-
-        std::cout << "Load dir : " << dir_entry.path() << "\n";
-
-        const auto lib_block_name = dir_entry.path().stem().concat(".json");
-        std::cout << "Stem : " << lib_block_name << "\n";
-
-        BlockData block;
-        Error err = block.Read(dir_entry.path());
-        block.SetLibraryRoot(path);
-
-        if(err != Error::OK) continue;
-
-        library->push_back(block);
-    }
-
-}
