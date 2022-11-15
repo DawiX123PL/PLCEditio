@@ -8,6 +8,7 @@
 #include <boost/json.hpp>
 #include <imgui.h>
 #include <imnodes.h>
+#include <assert.h>
 
 
 class BlockData{
@@ -193,6 +194,23 @@ public:
     Error Save(std::filesystem::path _path);
     Error Save();
     Error Read(const std::filesystem::path& _path);
+
+
+    Error ReadCode(std::string* data){
+        assert(data); // data ptr cannot be null;
+
+        Error err;
+        err = LoadFile(path / "code.cpp", data);
+
+        return err;
+    }
+
+    Error SaveCode(const std::string& data){
+        Error err;
+        err = SaveFile(path / "code.cpp", data);
+        return err;
+    }
+
 
 private:
     Error SaveFile(const std::filesystem::path& _path, const std::string& data);

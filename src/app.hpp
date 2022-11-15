@@ -37,15 +37,27 @@ public:
     std::list<BlockEditor> block_editors;
     SchematicEditor schematic_editor;
 
-  
+    const int argc;
+    char** argv;
+    std::vector<std::string> arg;
 
-    App() :
+
+    App(int _argc, char** _argv) :
+        argc(_argc),
+        argv(_argv),
         PLC_connection_log("PLC Message Log"),
         event_log("Event Log"),
         schematic_editor("Schematic Editor")
     {
-        library1.SetStdLibPath(""); //TODO: SET STD PATH;
+
+        for(int i = 0; i < argc; i++){
+            arg.emplace_back(argv[i]);
+            std::cout << argv[i] << "\n";
+        }
+
+        std::filesystem::path std_path = std::filesystem::path(arg[0]).parent_path() / "std_blocks";
         library1.SetProjectPath("");
+        library1.SetStdLibPath(std_path.lexically_normal());
         library1.Scan();
 
         schematic_editor.SetSchematic(&mainSchematic);

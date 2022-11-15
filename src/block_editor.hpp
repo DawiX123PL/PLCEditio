@@ -35,6 +35,8 @@ class BlockEditor: public WindowObject{
 
     static int next_id;
 
+    bool is_std_block;
+
 public:
 
     BlockEditor(std::shared_ptr<BlockData> _block): 
@@ -45,6 +47,7 @@ public:
         center_on_start = true;
         block_id = 0;
 
+
         context = ImNodes::CreateContext();
         context_editor = ImNodes::EditorContextCreate();
 
@@ -52,6 +55,18 @@ public:
         outputs_count = _block->Outputs().size();
 
         block_copy = *_block;
+        
+        // check if block is from STD
+        std::string full_name = _block->FullName();
+        const char std[] = "\\STD\\";
+        if(full_name.compare(0, sizeof(std)-1, std) == 0){
+            // fullname is == "\STD\......";
+            is_std_block = true;
+        }else{
+            is_std_block = false;
+        }
+
+
     }
 
     ~BlockEditor(){
@@ -128,16 +143,25 @@ public:
             { // block edition
                 ImGui::BeginChild(2);
 
+                if(is_std_block)
+                    ImGui::TextColored(ImColor(255,255,0), "STD block cannot be modified");
+
                 std::string title = block_copy.Title();
-                if(ImGui::InputText("Name", &title))no_saved = true;
-                block_copy.SetTitle(title);
+
+                ImGui::BeginDisabled(is_std_block);
+                    if(ImGui::InputText("Name", &title))no_saved = true;
+                    block_copy.SetTitle(title);
+                ImGui::EndDisabled();
 
 
+                ImGui::BeginDisabled(is_std_block);
                 if(ImGui::InputInt("Inputs count", &inputs_count, 1, 1)){
                     no_saved = true;
                     inputs_count = inputs_count > 0 ? inputs_count : 0;
                     inputs_count = inputs_count < io_count_limit ? inputs_count : io_count_limit;
                 }
+                ImGui::EndDisabled();
+
 
                 { // Inputs 
                     // unnecessary copy 
@@ -151,8 +175,10 @@ public:
                             ImGui::PushID(i);
 
                             if(ImGui::TreeNode(&i, "input %d", i)){
-                                ImGui::InputText("Label", &inputs[i].label);
-                                ImGui::InputText("Type", &inputs[i].type);
+                                ImGui::BeginDisabled(is_std_block);
+                                    ImGui::InputText("Label", &inputs[i].label);
+                                    ImGui::InputText("Type", &inputs[i].type);
+                                ImGui::EndDisabled();
                                 ImGui::TreePop();
                             }
 
@@ -165,11 +191,15 @@ public:
                     block_copy.SetInputs(inputs);
                 }
 
+
+                ImGui::BeginDisabled(is_std_block);
                 if(ImGui::InputInt("Output count", &outputs_count, 1, 1)){
                     no_saved = true;
                     outputs_count = outputs_count > 0 ? outputs_count : 0;
                     outputs_count = outputs_count < io_count_limit ? outputs_count : io_count_limit;
                 }
+                ImGui::EndDisabled();
+
 
                 { // Inputs 
                     // unnecessary copy 
@@ -183,8 +213,10 @@ public:
                             ImGui::PushID(i);
 
                             if(ImGui::TreeNode(&i, "output %d", i)){
-                                ImGui::InputText("Label", &outputs[i].label);
-                                ImGui::InputText("Type", &outputs[i].type);
+                                ImGui::BeginDisabled(is_std_block);
+                                    ImGui::InputText("Label", &outputs[i].label);
+                                    ImGui::InputText("Type", &outputs[i].type);
+                                ImGui::EndDisabled();
                                 ImGui::TreePop();
                             }
 
@@ -200,11 +232,12 @@ public:
                 ImGui::Separator();
                 {
                     if(ImGui::Button("Close", ImVec2(ImGui::GetWindowWidth()/3, 0))) show = false;
-
+                    
+                    ImGui::BeginDisabled(is_std_block);
                     ImGui::SameLine();
                     if(ImGui::Button("Save", ImVec2(ImGui::GetWindowWidth()/3, 0))){
                         auto block_ptr = block.lock();
-                        if(block_ptr){
+                        if(block_ptr && !is_std_block){
                             *block_ptr = block_copy;
                             block_ptr->Save();
                             no_saved = false;    
@@ -220,6 +253,7 @@ public:
                             delete_button_timeout = std::chrono::high_resolution_clock::now() + std::chrono::seconds(7);
                         }
                     } 
+                    ImGui::EndDisabled();
                 }
 
                 ImGui::EndChild();

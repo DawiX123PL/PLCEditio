@@ -16,7 +16,7 @@ static void GLFW_error_callback(int err,const char* msg){
 }
 
 
-int main(){
+int main(int argc, char** argv){
 
 
     glfwSetErrorCallback(GLFW_error_callback);
@@ -85,7 +85,7 @@ int main(){
     ImGui_ImplOpenGL3_Init(glsl_version);
 
 
-    App app;
+    App app(argc, argv);
 
 
 
