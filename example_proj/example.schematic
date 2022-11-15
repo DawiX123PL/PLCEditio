@@ -44,6 +44,51 @@
             ],
             "loc": "PROJ",
             "name": "output"
+        },
+        {
+            "id": 12,
+            "pos": [
+                686,
+                347
+            ],
+            "loc": "PROJ",
+            "name": "test1"
+        },
+        {
+            "id": 14,
+            "pos": [
+                580,
+                356
+            ],
+            "loc": "PROJ",
+            "name": "test1"
+        },
+        {
+            "id": 16,
+            "pos": [
+                505,
+                347
+            ],
+            "loc": "PROJ",
+            "name": "test1"
+        },
+        {
+            "id": 20,
+            "pos": [
+                151,
+                384
+            ],
+            "loc": "PROJ",
+            "name": "L1\\test1"
+        },
+        {
+            "id": 21,
+            "pos": [
+                230,
+                381
+            ],
+            "loc": "PROJ",
+            "name": "L1\\test1"
         }
     ],
     "connections": [

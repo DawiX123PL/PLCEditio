@@ -266,7 +266,7 @@ Schematic::Error Schematic::ParseJsonBlock(const boost::json::value& js, Block* 
 	// get src
 	if (auto js_name = js_obj.if_contains("name")) {
 		if (auto js_name_str = js_name->if_string()) {
-			block->name = std::string(js_name_str->begin(), js_name_str->end());
+			block->full_name = std::string(js_name_str->begin(), js_name_str->end());
 		}
 		else return Error::JSON_BLOCK_NAME_NOT_STRING;
 	}

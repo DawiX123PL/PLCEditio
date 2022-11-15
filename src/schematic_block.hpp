@@ -10,11 +10,11 @@
 #include <imnodes.h>
 
 
-
 class BlockData{
 
 public:
     struct IO{
+
         std::string label;
         std::string type;
         IO()
@@ -29,13 +29,15 @@ private:
     std::string title;
     std::filesystem::path path;
     std::filesystem::path library_root;
-    std::string name; // name is related to block path 
-                      // name = path - library_root - extension;
-                      // eg.: 
-                      //    
-                      //    library_root = "C:\Users\TestUser\Desktop\project"
-                      //    path         = "C:\Users\TestUser\Desktop\project\LocalBlocks\test.block"
-                      //    name         = "LocalBlocks\test"
+    std::string name;       
+    std::string full_name;  // full_name is related to block path 
+                            // full_name = path - library_root - extensions;
+                            // eg.: 
+                            //    
+                            //    library_root = "C:\Users\TestUser\Desktop\project"
+                            //    path         = "C:\Users\TestUser\Desktop\project\LocalBlocks\test.block"
+                            //    name         = "test"
+                            //    full_name    = "LocalBlocks\test"
 
 
 
@@ -57,38 +59,47 @@ public:
     const std::vector<IO>& Outputs(){ return outputs; };
 
     const std::string& Name(){return name;}
+    const std::string& FullName(){return full_name;}
 
 
     void SetTitle(const std::string& _title){ title = _title; };
     void SetPath(const std::filesystem::path& _path){ 
         path = _path;
-
-        std::error_code err;
-
-        std::filesystem::path name_path;
-        if(path.empty())
-            name_path = std::filesystem::relative(path, library_root, err).lexically_normal().replace_extension();
-        else
-            name_path = path.lexically_normal().replace_extension();
-
-        try{ 
-            name = name_path.string(); 
-
-        } catch(...){ name = "?"; };
+        CalculateName();
     };
 
     void SetLibraryRoot(const std::filesystem::path& _path){
         library_root = _path;
-
-        std::error_code err;
-        auto name_path = std::filesystem::relative(path, library_root, err).lexically_normal().replace_extension();
-        try{ name = name_path.string(); } catch(...){ name = "?"; };
+        CalculateName();
     }
 
     void SetInputs(const std::vector<IO>& _inputs){ inputs = _inputs; };
     void SetOutputs(const std::vector<IO>& _outputs){ outputs = _outputs; };
 
+private:
+    void CalculateName(){
+        // get block name
+        try{
+            name = path.stem().string();
+        }catch(...){
+            name = "????";
+        };
 
+        // get block full name
+        std::error_code err;
+        std::filesystem::path p1 = std::filesystem::relative(path, library_root, err).lexically_normal();
+        full_name = name;
+        while(p1.has_parent_path()){
+            p1 = p1.parent_path();
+            try{
+                full_name = p1.stem().string() + "\\" + full_name;
+            }catch(...){
+                full_name = "???\\" + full_name;
+            }
+        }
+    }
+
+public:
 
 
     // 

@@ -9,6 +9,8 @@
 #include "schematic_editor.hpp"
 #include "schematic_block.hpp"
 #include "block_editor.hpp"
+#include "librarian.hpp"
+
 
 
 class App{
@@ -28,7 +30,9 @@ public:
     DebugLogger event_log;
     
     Schematic mainSchematic;
-    std::list<std::shared_ptr<BlockData>> library;
+    // std::list<std::shared_ptr<BlockData>> library;
+    Librarian library1;
+
 
     std::list<BlockEditor> block_editors;
     SchematicEditor schematic_editor;
@@ -40,8 +44,12 @@ public:
         event_log("Event Log"),
         schematic_editor("Schematic Editor")
     {
+        library1.SetStdLibPath(""); //TODO: SET STD PATH;
+        library1.SetProjectPath("");
+        library1.Scan();
+
         schematic_editor.SetSchematic(&mainSchematic);
-        schematic_editor.SetLibrary(&library);
+        schematic_editor.SetLibrary(&library1);
         schematic_editor.Show(true);
 
         event_log.Show(true);
@@ -257,13 +265,15 @@ private:
             event_log.PushBack(DebugLogger::Priority::ERROR, std::string("Cannot save project: ") + Schematic::ErrorToStr(err) );    
             
 
-        if(save_lib){
+        if(save_lib && !file_path.empty()){
 
-            for(auto& block: library){
-                auto proj_root = mainSchematic.Path().parent_path();
-                auto block_name = block->Path().stem();
-                block->Save(proj_root / block_name.concat(".block"));
-            }
+            library1.CopyLocalLibTo(file_path);
+
+            // for(auto& block: library){
+            //     auto proj_root = mainSchematic.Path().parent_path();
+            //     auto block_name = block->Path().stem();
+            //     block->Save(proj_root / block_name.concat(".block"));
+            // }
 
         }    
     }
@@ -273,26 +283,29 @@ private:
     void LoadProj(const std::string& file_path) {
         Schematic::Error err = mainSchematic.Read(file_path);
 
-        if (err == Schematic::Error::OK) 
+        if (err == Schematic::Error::OK){
             event_log.PushBack(DebugLogger::Priority::SUCCESS, "Project loaded succesfully");
-        else 
+        }
+        else{
             event_log.PushBack(DebugLogger::Priority::ERROR, Schematic::ErrorToStr(err));
-
-
-        std::list<BlockData> proj_lib;
-        auto proj_lib_path = mainSchematic.Path().parent_path();
-        BlockData::LoadProjectLibrary(&proj_lib, proj_lib_path);
-
-        library.clear();
-
-        for (auto& block_from_lib : proj_lib) {
-            library.push_back(std::make_shared<BlockData>(block_from_lib));
+            return;
         }
 
-        mainSchematic.LinkWithLibrary(&library);
+        library1.SetProjectPath(mainSchematic.Path().parent_path());
+        library1.ScanProject();
+
+        // std::list<BlockData> proj_lib;
+        // auto proj_lib_path = mainSchematic.Path().parent_path();
+        // BlockData::LoadProjectLibrary(&proj_lib, proj_lib_path);
+        // library.clear();
+        // for (auto& block_from_lib : proj_lib) {
+        //    library.push_back(std::make_shared<BlockData>(block_from_lib));
+        // }
+
+        mainSchematic.LinkWithLibrary(&library1);
         mainSchematic.RemoveInvalidElements();
         schematic_editor.SetSchematic(&mainSchematic);
-        schematic_editor.SetLibrary(&library);
+        schematic_editor.SetLibrary(&library1);
     }
 
 
@@ -365,20 +378,23 @@ private:
                 // create new block and save on hard drive
                 BlockData block;
                 BlockData::Error err = block.Save(path);
-                block.SetLibraryRoot(mainSchematic.Path().parent_path());
+                //block.SetLibraryRoot(mainSchematic.Path().parent_path());
 
                 if(err == BlockData::Error::OK){
-                    auto block_ptr = std::make_shared<BlockData>(block);
-                    block_ptr->SetDemoBlockData();
+                    library1.AddBlock(block);
+                    mainSchematic.LinkWithLibrary(&library1);
 
-                    library.push_back(block_ptr);
+                    // auto block_ptr = std::make_shared<BlockData>(block);
+                    // block_ptr->SetDemoBlockData();
 
-                    if(block_create_editor_after_creation)
-                        block_editors.emplace_back(block_ptr); // open editor after creation 
+                    // library.push_back(block_ptr);
+
+                    // if(block_create_editor_after_creation)
+                    //     block_editors.emplace_back(block_ptr); // open editor after creation 
 
                     event_log.PushBack(DebugLogger::Priority::SUCCESS, "Created new block");
                 }else{
-                    std::string msg = std::string({"Cannot create new block: ", BlockData::ErrorToStr(err)});
+                    std::string msg = std::string("Cannot create new block: ") + BlockData::ErrorToStr(err);
                     event_log.PushBack(DebugLogger::Priority::ERROR, msg);
                 }
 
@@ -463,39 +479,68 @@ private:
                 }
 
 
-                if (ImGui::TreeNode("Blocks")) {
-                    for (const auto& block : library) {
+                if (ImGui::TreeNode("Blocks")) {                    
 
-                        std::string name = block->Name() + "##block";
-                        ImGui::TreeNodeEx(name.c_str(), ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
-                        // open editor window
-                        if(ImGui::IsItemClicked()){
+                    ShowProjectTreeBlockLib(library1.GetProjectLib());
+                    
+                    
+                    // for (const auto& block : library) {
 
-                            // check if editor is opened
-                            bool isOpen = false;
-                            for (auto& ed : block_editors) {
-                                if (ed.IsSameBlockAs(block)) {
-                                    isOpen = true;
-                                    ed.Show(true);
-                                    break;
-                                }
-                            }
-                            // open new editor if needed
-                            if(!isOpen)
-                                block_editors.emplace_back(block);
-                        }
+                    //     std::string name = block->Name() + "##block";
+                    //     ImGui::TreeNodeEx(name.c_str(), ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
+                    //     // open editor window
+                    //     if(ImGui::IsItemClicked()){
 
-                    }
+                    //         // check if editor is opened
+                    //         bool isOpen = false;
+                    //         for (auto& ed : block_editors) {
+                    //             if (ed.IsSameBlockAs(block)) {
+                    //                 isOpen = true;
+                    //                 ed.Show(true);
+                    //                 break;
+                    //             }
+                    //         }
+                    //         // open new editor if needed
+                    //         if(!isOpen)
+                    //             block_editors.emplace_back(block);
+                    //     }
+
+                    // }
                     ImGui::TreePop();
                 }
                 ImGui::TreePop();
             }
-                
-
-
         }
         ImGui::End();
+    }
 
+
+    void ShowProjectTreeBlockLib(Librarian::Library& lib){
+        
+        for(auto& sub_lib: lib.sub_libraries){
+            if (ImGui::TreeNode(sub_lib.name.c_str())) {
+                ShowProjectTreeBlockLib(sub_lib);
+                ImGui::TreePop();
+            }
+        }
+
+        for(auto& block: lib.blocks){
+            ImGui::TreeNodeEx(block->Name().c_str(), ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
+
+            if (ImGui::IsItemClicked()) {
+                bool isOpen = false;
+                for (auto &editor : block_editors)                {
+                    if (editor.IsSameBlockAs(block)){
+                        isOpen = true;
+                        editor.Show(true);
+                        break;
+                    }
+                }
+                // open new editor if needed
+                if (!isOpen)
+                    block_editors.emplace_back(block);
+            }
+        }
     }
 
 

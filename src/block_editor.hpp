@@ -33,10 +33,12 @@ class BlockEditor: public WindowObject{
     bool show_delete_block_popup = false;
     std::chrono::time_point<std::chrono::high_resolution_clock> delete_button_timeout;
 
+    static int next_id;
+
 public:
 
     BlockEditor(std::shared_ptr<BlockData> _block): 
-        WindowObject("block: " + _block->Name() + "##BLOCK_EDITOR"),
+        WindowObject("block: " + _block->FullName() + "##BLOCK_EDITOR" + std::to_string(next_id++)),
         block(_block)
     {
         show = true;

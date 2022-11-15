@@ -5,7 +5,7 @@
 
 #include "window_object.hpp"
 #include "schematic.hpp"
-
+#include "librarian.hpp"
 
 
 class SchematicEditor: public WindowObject{
@@ -14,7 +14,7 @@ class SchematicEditor: public WindowObject{
     ImNodesContext* context;
 
     Schematic* schematic;
-    std::list<std::shared_ptr<BlockData>>* library;
+    Librarian* library;
 
     bool init;
 
@@ -37,7 +37,7 @@ public:
         init = true;
     }
 
-    void SetLibrary(std::list<std::shared_ptr<BlockData>>* lib){
+    void SetLibrary(Librarian* lib){
         library = lib;
         init = true;
     }
@@ -92,18 +92,20 @@ public:
                 
                 if(ImGui::BeginMenu("Add")){
                     
-                    if (library) {
-                        for (auto block : *library) {
+                    RenderAddPopup(library->GetProjectLib(), click_pos);
 
-                            if (ImGui::MenuItem(block->Name().c_str())) {
-                                // TODO:
-                                // ADD BLOCK to schematic there                      
+                    // if (library) {
+                    //     for (auto block : *library) {
 
-                                auto b = schematic->CreateBlock(block, 0, 0);
-                                ImNodes::SetNodeScreenSpacePos(BlockData::GetImnodeID(b->id), click_pos);
-                            }
-                        }
-                    }
+                    //         if (ImGui::MenuItem(block->Name().c_str())) {
+                    //             // TODO:
+                    //             // ADD BLOCK to schematic there                      
+
+                    //             auto b = schematic->CreateBlock(block, 0, 0);
+                    //             ImNodes::SetNodeScreenSpacePos(BlockData::GetImnodeID(b->id), click_pos);
+                    //         }
+                    //     }
+                    // }
                  
                     ImGui::EndMenu();
                 }
@@ -235,6 +237,29 @@ public:
         ImGui::End();
             
     }
+
+private:
+    void RenderAddPopup(Librarian::Library& lib, const ImVec2 click_pos){
+
+        for(auto& sub_lib: lib.sub_libraries){
+            
+            if(ImGui::BeginMenu(sub_lib.name.c_str())){
+                RenderAddPopup(sub_lib, click_pos);
+                ImGui::EndMenu();
+            }
+        }
+
+        for(auto& block: lib.blocks){
+
+            if(ImGui::MenuItem(block->Name().c_str())){
+                // ADD BLOCK to schematic     
+                auto b = schematic->CreateBlock(block, 0, 0);
+                ImNodes::SetNodeScreenSpacePos(BlockData::GetImnodeID(b->id), click_pos);
+            }
+        }
+
+
+    } 
 
 
 

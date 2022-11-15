@@ -8,7 +8,7 @@
 #include <filesystem>
 
 #include "schematic_block.hpp"
-
+#include "librarian.hpp"
 
 
 class Schematic {
@@ -17,14 +17,20 @@ class Schematic {
 	struct Block {
 		std::weak_ptr<BlockData> lib_block;
 		int id;
-		std::string name;
+		std::string full_name;
 		enum class Location{PROJECT, STD, EXTERNAL} location;
 		struct Pos { int x; int y; } pos;
+
+		std::string GetFullName(){
+			auto block_data = lib_block.lock();
+			if(!block_data) return full_name;
+			else return block_data->FullName();
+		}
 
 		bool IsValid(){
 			if(id <= 0) return false;
 			if(!lib_block.lock()) return false;
-			if(name.empty()) return false;
+			if(full_name.empty()) return false;
 			return true;
 		}
 	};
@@ -181,7 +187,7 @@ public:
 		b.id = next_block_id++;
 		b.lib_block = block_data;
 		b.location = Block::Location::PROJECT;
-		b.name = block_data->Name();
+		b.full_name = block_data->Name();
 		b.pos.x = x;
 		b.pos.y = y;
 
@@ -194,15 +200,20 @@ public:
 
 
 
-	void LinkWithLibrary(std::list<std::shared_ptr<BlockData>>* library){
+	void LinkWithLibrary(Librarian* library){
 		if(!library) return;
 
+		// for(auto& block_ptr: blocks){
+		// 	for(const auto block_data_ptr: *library){
+		// 		if(block_ptr->name == block_data_ptr->Name()){
+		// 			block_ptr->lib_block = block_data_ptr;
+		// 		}
+		// 	}
+		// }
+
 		for(auto& block_ptr: blocks){
-			for(const auto block_data_ptr: *library){
-				if(block_ptr->name == block_data_ptr->Name()){
-					block_ptr->lib_block = block_data_ptr;
-				}
-			}
+			auto block_data = library->FindBlock(block_ptr->full_name);
+			block_ptr->lib_block = block_data;
 		}
 
 	}
@@ -288,7 +299,7 @@ private:
 				{"id", block_ptr->id},
 				{"pos", boost::json::array({block_ptr->pos.x, block_ptr->pos.y })},
 				{"loc", loc},
-				{"name", block_ptr->name},
+				{"name", block_ptr->GetFullName()},
 			};
 
 			js_blocks.push_back(js_block);
