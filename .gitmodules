@@ -9,10 +9,6 @@
 	path = libs/boost
 	url = https://github.com/boostorg/boost.git
 	branch = boost-1.80.0
-[submodule "libs/imgui-node-editor"]
-	path = libs/imgui-node-editor
-	url = https://github.com/thedmd/imgui-node-editor.git
-	branch = master
 [submodule "libs/imnodes"]
 	path = libs/imnodes
 	url = https://github.com/Nelarius/imnodes.git
