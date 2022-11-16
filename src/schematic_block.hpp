@@ -63,6 +63,7 @@ public:
 
     void SetName(std::string n){ name = n; }
     void SetNamePrefix(std::string n){ name_prefix = n; }
+    const std::string& GetNamePrefix(){ return name_prefix; }
 
 
     void SetTitle(const std::string& _title){ title = _title; };

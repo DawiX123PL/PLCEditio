@@ -1,9 +1,1 @@
-{
-    "title":"input",
-    "inputs":[
-        
-    ],
-    "outputs":[
-        {"label": "i1", "type": "bool"}
-    ]
-}
+{"title":"input","inputs":[],"outputs":[{"label":"i1","type":"bool"}]}

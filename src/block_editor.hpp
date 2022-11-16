@@ -3,7 +3,7 @@
 #include <imgui.h>
 #include <imnodes.h>
 #include <misc/cpp/imgui_stdlib.h>
-// #include <imgui_node_editor.h>
+#include <boost/algorithm/string.hpp>
 #include "window_object.hpp"
 #include "schematic_block.hpp"
 
@@ -252,8 +252,11 @@ public:
 
                 ImGui::Separator();
 
-                if(ImGui::Button("Edit Code")){ 
+                if(ImGui::Button("Edit Code", ImVec2(ImGui::GetWindowWidth(), 0))){ 
                     BlockData::Error err = block_copy.ReadCode(&block_code);
+
+                    // convert '\r' -> '\n' for simplicity
+                    boost::replace_all(block_code, "\r", "\n");
 
                     if(err == BlockData::Error::OK){
                         PreprocessUserCode();
@@ -333,40 +336,61 @@ private:
 
             ImGui::SameLine();
 
+            ImGui::BeginDisabled(is_std_block);
             if(ImGui::Button("Save", button_size)){
                 SaveBlock();
             }
-
-
-            ImGui::BeginDisabled(is_std_block);
-
-            // ImVec2 size = ImGui::CalcTextSize((block_code + "\n\n\n\nX").c_str());
-            // size.x = ImGui::GetWindowWidth();
-
-            // if(ImGui::InputTextMultiline("##code", &block_code, size, ImGuiInputTextFlags_AllowTabInput)){
-            //     no_saved = true;
-            // }
-
-
-            block_code_size_user_include = ImGui::CalcTextSize((block_code_user_include + "\nX").c_str()).y;
-            block_code_size_user_class_body = ImGui::CalcTextSize((block_code_user_class_body + "\nX").c_str()).y;
-
-            ImVec2 size_include = ImVec2(ImGui::GetWindowWidth(), block_code_size_user_include);
-            ImVec2 size_prolog  = ImVec2(ImGui::GetWindowWidth(), block_code_size_class_prolog);
-            ImVec2 size_body    = ImVec2(ImGui::GetWindowWidth(), block_code_size_user_class_body);
-            ImVec2 size_epilog  = ImVec2(ImGui::GetWindowWidth(), block_code_size_class_epilog);
-
-
-            if(ImGui::InputTextMultiline("##code_includes", &block_code_user_include,    size_include,ImGuiInputTextFlags_AllowTabInput ))
-                no_saved = true;
-            if(ImGui::InputTextMultiline("##code_prolog",   &block_code_class_prolog,    size_prolog, ImGuiInputTextFlags_AllowTabInput | ImGuiInputTextFlags_ReadOnly))
-                no_saved = true;
-            if(ImGui::InputTextMultiline("##code_body",     &block_code_user_class_body, size_body,   ImGuiInputTextFlags_AllowTabInput ))
-                no_saved = true;
-            if(ImGui::InputTextMultiline("##code_epilog",   &block_code_class_epilog,    size_epilog, ImGuiInputTextFlags_AllowTabInput | ImGuiInputTextFlags_ReadOnly))
-                no_saved = true;
-
             ImGui::EndDisabled();
+
+            if(is_std_block){
+                ImGui::TextColored(ImColor(255,255,0), "STD Block cannot be modified");
+            }
+
+
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
+            
+
+            ImGui::BeginChild("##CODE");
+                ImGui::BeginDisabled(is_std_block);
+
+                // ImVec2 size = ImGui::CalcTextSize((block_code + "\n\n\n\nX").c_str());
+                // size.x = ImGui::GetWindowWidth();
+
+                // if(ImGui::InputTextMultiline("##code", &block_code, size, ImGuiInputTextFlags_AllowTabInput)){
+                //     no_saved = true;
+                // }
+
+
+                block_code_size_user_include = ImGui::CalcTextSize((block_code_user_include + "\nX").c_str()).y;
+                block_code_size_user_class_body = ImGui::CalcTextSize((block_code_user_class_body + "\nX").c_str()).y;
+
+                ImVec2 size_include = ImVec2(ImGui::GetWindowWidth(), block_code_size_user_include);
+                ImVec2 size_prolog  = ImVec2(ImGui::GetWindowWidth(), block_code_size_class_prolog);
+                ImVec2 size_body    = ImVec2(ImGui::GetWindowWidth(), block_code_size_user_class_body);
+                ImVec2 size_epilog  = ImVec2(ImGui::GetWindowWidth(), block_code_size_class_epilog);
+
+
+                if(ImGui::InputTextMultiline("##code_includes", &block_code_user_include,    size_include,ImGuiInputTextFlags_AllowTabInput ))
+                    no_saved = true;
+
+                ImGui::PushStyleColor(ImGuiCol_FrameBg, (ImVec4)ImColor(0, 0, 0, 0));
+                if(ImGui::InputTextMultiline("##code_prolog",   &block_code_class_prolog,    size_prolog, ImGuiInputTextFlags_AllowTabInput | ImGuiInputTextFlags_ReadOnly))
+                    no_saved = true;
+                ImGui::PopStyleColor();
+
+                if(ImGui::InputTextMultiline("##code_body",     &block_code_user_class_body, size_body,   ImGuiInputTextFlags_AllowTabInput ))
+                    no_saved = true;
+
+                ImGui::PushStyleColor(ImGuiCol_FrameBg, (ImVec4)ImColor(0,0,0,0));
+                if(ImGui::InputTextMultiline("##code_epilog",   &block_code_class_epilog,    size_epilog, ImGuiInputTextFlags_AllowTabInput | ImGuiInputTextFlags_ReadOnly))
+                    no_saved = true;
+                ImGui::PopStyleColor();
+
+
+                ImGui::EndDisabled();
+
+            ImGui::EndChild();
+            ImGui::PopStyleColor();
 
         }
         ImGui::End();
@@ -399,11 +423,13 @@ private:
 
     void PreprocessComputedCode(){
 
+        std::string block_namespace = block_copy.GetNamePrefix();
+        boost::replace_all(block_namespace, "\\", "__");
 
         block_code_class_prolog = 
-            "namespace LOCAL{ \n"
+            "namespace " + block_namespace + "{ \n"
             " \n"
-            "    class and_block{ \n"
+            "    class " + block_copy.Name() + "_block{ \n"
             "    public: \n";
             // "        bool input0; \n"
             // "        bool input1; \n"
