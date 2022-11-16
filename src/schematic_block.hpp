@@ -200,14 +200,14 @@ public:
         assert(data); // data ptr cannot be null;
 
         Error err;
-        err = LoadFile(path / "code.cpp", data);
+        err = LoadFile(path / (name + ".cpp"), data);
 
         return err;
     }
 
     Error SaveCode(const std::string& data){
         Error err;
-        err = SaveFile(path / "code.cpp", data);
+        err = SaveFile(path / (name + ".cpp"), data);
         return err;
     }
 

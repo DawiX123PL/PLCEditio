@@ -37,10 +37,31 @@ class BlockEditor: public WindowObject{
 
     bool is_std_block;
 
+// code editor variables
+    std::string code_editor_name;
+    bool show_code_editor = false;
+    
+    bool is_code_loaded = false;
+
+    std::string block_code;
+
+    std::string block_code_user_include;
+    std::string block_code_class_prolog;
+    std::string block_code_user_class_body;
+    std::string block_code_class_epilog;
+
+    int block_code_size_user_include;
+    int block_code_size_class_prolog;
+    int block_code_size_user_class_body;
+    int block_code_size_class_epilog;
+
+
+
 public:
 
     BlockEditor(std::shared_ptr<BlockData> _block): 
-        WindowObject("block: " + _block->FullName() + "##BLOCK_EDITOR" + std::to_string(next_id++)),
+        WindowObject("block: " + _block->FullName() + "##BLOCK_EDITOR"),
+        code_editor_name("block: " + _block->FullName() + "##BLOCK_EDITOR_CODE"),
         block(_block)
     {
         show = true;
@@ -230,18 +251,27 @@ public:
                 }
 
                 ImGui::Separator();
+
+                if(ImGui::Button("Edit Code")){ 
+                    BlockData::Error err = block_copy.ReadCode(&block_code);
+
+                    if(err == BlockData::Error::OK){
+                        PreprocessUserCode();
+                    }else{
+                        InitUserCode();
+                    }
+                    is_code_loaded = true;
+                    show_code_editor = true;
+                }
+
+                ImGui::Separator();
                 {
                     if(ImGui::Button("Close", ImVec2(ImGui::GetWindowWidth()/3, 0))) show = false;
                     
                     ImGui::BeginDisabled(is_std_block);
                     ImGui::SameLine();
                     if(ImGui::Button("Save", ImVec2(ImGui::GetWindowWidth()/3, 0))){
-                        auto block_ptr = block.lock();
-                        if(block_ptr && !is_std_block){
-                            *block_ptr = block_copy;
-                            block_ptr->Save();
-                            no_saved = false;    
-                        } 
+                        SaveBlock();
                     } 
 
                     ImGui::SameLine();
@@ -265,7 +295,178 @@ public:
 
         if(show_delete_block_popup)
             DeleteBlockPopup();
+
+        if(show_code_editor)
+            RenderCodeEditor();
     }
+
+private:
+
+    void SaveBlock(){
+        auto block_ptr = block.lock();
+        if(block_ptr && !is_std_block){
+            *block_ptr = block_copy;
+            block_ptr->Save();
+            block_ptr->SaveCode(block_code);
+            no_saved = false;    
+            if(is_code_loaded){
+                MergeCode();
+                block_ptr->SaveCode(block_code);
+            }
+        } 
+    }
+
+    void RenderCodeEditor(){
+        if(!show_code_editor) return;
+
+        PreprocessComputedCode();
+
+
+        ImGuiWindowFlags flags = 0;
+        if(no_saved) flags += ImGuiWindowFlags_UnsavedDocument;
+
+        if(ImGui::Begin(code_editor_name.c_str(), &show_code_editor, flags)){
+
+
+            ImVec2 button_size = ImVec2(ImGui::GetWindowWidth()/2, 0);
+            if(ImGui::Button("Close", button_size)) show = false;
+
+            ImGui::SameLine();
+
+            if(ImGui::Button("Save", button_size)){
+                SaveBlock();
+            }
+
+
+            ImGui::BeginDisabled(is_std_block);
+
+            // ImVec2 size = ImGui::CalcTextSize((block_code + "\n\n\n\nX").c_str());
+            // size.x = ImGui::GetWindowWidth();
+
+            // if(ImGui::InputTextMultiline("##code", &block_code, size, ImGuiInputTextFlags_AllowTabInput)){
+            //     no_saved = true;
+            // }
+
+
+            block_code_size_user_include = ImGui::CalcTextSize((block_code_user_include + "\nX").c_str()).y;
+            block_code_size_user_class_body = ImGui::CalcTextSize((block_code_user_class_body + "\nX").c_str()).y;
+
+            ImVec2 size_include = ImVec2(ImGui::GetWindowWidth(), block_code_size_user_include);
+            ImVec2 size_prolog  = ImVec2(ImGui::GetWindowWidth(), block_code_size_class_prolog);
+            ImVec2 size_body    = ImVec2(ImGui::GetWindowWidth(), block_code_size_user_class_body);
+            ImVec2 size_epilog  = ImVec2(ImGui::GetWindowWidth(), block_code_size_class_epilog);
+
+
+            if(ImGui::InputTextMultiline("##code_includes", &block_code_user_include,    size_include,ImGuiInputTextFlags_AllowTabInput ))
+                no_saved = true;
+            if(ImGui::InputTextMultiline("##code_prolog",   &block_code_class_prolog,    size_prolog, ImGuiInputTextFlags_AllowTabInput | ImGuiInputTextFlags_ReadOnly))
+                no_saved = true;
+            if(ImGui::InputTextMultiline("##code_body",     &block_code_user_class_body, size_body,   ImGuiInputTextFlags_AllowTabInput ))
+                no_saved = true;
+            if(ImGui::InputTextMultiline("##code_epilog",   &block_code_class_epilog,    size_epilog, ImGuiInputTextFlags_AllowTabInput | ImGuiInputTextFlags_ReadOnly))
+                no_saved = true;
+
+            ImGui::EndDisabled();
+
+        }
+        ImGui::End();
+
+    }
+
+
+    void PreprocessUserCode(){
+        CodeExtractSection(block_code, &block_code_user_include, "includes");
+        CodeExtractSection(block_code, &block_code_user_class_body, "functions");
+
+        block_code_size_user_include = ImGui::CalcTextSize((block_code_user_include + "\nX").c_str()).y;
+        block_code_size_user_class_body = ImGui::CalcTextSize((block_code_user_class_body + "\nX").c_str()).y;
+    }
+
+    void InitUserCode(){
+        block_code_user_include = "\n";
+        block_code_user_class_body = 
+            "\n"
+            "        void Init(){\n"
+            "\n"
+            "        }\n"
+            "\n"
+            "        void Update(){\n"
+            "            \n"
+            "        }\n"
+            "\n";
+    }
+
+
+    void PreprocessComputedCode(){
+
+
+        block_code_class_prolog = 
+            "namespace LOCAL{ \n"
+            " \n"
+            "    class and_block{ \n"
+            "    public: \n";
+            // "        bool input0; \n"
+            // "        bool input1; \n"
+            // "        bool output0; \n"
+            // "        bool output1; \n";
+        
+        auto inputs = block_copy.Inputs();
+        for(int i = 0; i < inputs.size(); i++){
+            block_code_class_prolog +=
+            "        " + inputs[i].type + "* input" + std::to_string(i) + ";\n";
+        }
+
+        auto outputs = block_copy.Outputs();
+        for(int i = 0; i < outputs.size(); i++){
+            block_code_class_prolog +=
+            "        " + outputs[i].type + "  output" + std::to_string(i) + ";\n";
+        }
+
+        block_code_class_epilog = 
+            "    };\n"
+            "};\n";
+
+        block_code_size_class_prolog = ImGui::CalcTextSize((block_code_class_prolog + "\nX").c_str()).y;
+        block_code_size_class_epilog = ImGui::CalcTextSize((block_code_class_epilog + "\nX").c_str()).y;
+    }
+
+
+    void MergeCode(){
+        block_code =
+            + "\n//////****** begin includes ******//////\n"
+            + block_code_user_include
+            + "\n//////****** end includes ******//////\n"
+            + block_code_class_prolog
+            + "\n//////****** begin functions ******//////\n"
+            + block_code_user_class_body
+            + "\n//////****** end functions ******//////\n"
+            + block_code_class_epilog;
+    }
+
+
+
+
+    bool CodeExtractSection(const std::string& code, std::string* result, std::string marker){
+
+        std::string begin_marker = "\n//////****** begin " + marker + " ******//////\n";
+        std::string end_marker = "\n//////****** end " + marker + " ******//////\n";
+
+        size_t start = code.find(begin_marker);
+        size_t end = code.find(end_marker);
+        
+        if(start == std::string::npos) return false;
+        if(end == std::string::npos) return false;
+
+        size_t begin_pos = start + begin_marker.size();
+        size_t section_len = end - begin_pos;
+
+        if(section_len <= 0) return false;
+
+        *result = code.substr(begin_pos, section_len); 
+        return true;
+    }
+
+
 
 
 private:
