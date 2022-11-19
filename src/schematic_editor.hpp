@@ -157,7 +157,7 @@ public:
 
             // delete elements 
             if (schematic) {
-                if (ImGui::IsKeyPressed(ImGuiKey_Delete)) {
+                if ( ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && ImNodes::IsEditorHovered() && ImGui::IsKeyPressed(ImGuiKey_Delete)) {
 
                     // delete blocks 
                     for (auto iter = schematic->blocks.begin(); iter != schematic->blocks.end(); /*none*/) {
