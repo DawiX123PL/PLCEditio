@@ -6,6 +6,8 @@
 #include <fstream>
 #include <boost/json.hpp>
 #include <filesystem>
+#include <variant>
+#include <inttypes.h>
 
 #include "schematic_block.hpp"
 #include "librarian.hpp"
@@ -19,6 +21,9 @@ class Schematic {
 		int id;
 		std::string full_name;
 		struct Pos { int x; int y; } pos;
+
+		std::vector<std::variant<std::monostate, bool, int64_t, double, std::string>> parameters;
+
 
 		std::string GetFullName(){
 			auto block_data = lib_block.lock();
@@ -189,7 +194,7 @@ public:
 		Block b;
 		b.id = next_block_id++;
 		b.lib_block = block_data;
-		b.full_name = block_data->Name();
+		b.full_name = block_data->FullName();
 		b.pos.x = x;
 		b.pos.y = y;
 
@@ -288,11 +293,29 @@ private:
 		for (const auto& block_ptr : blocks) {
 			if (!block_ptr) continue;
 
-			boost::json::value js_block = {
-				{"id", block_ptr->id},
-				{"pos", boost::json::array({block_ptr->pos.x, block_ptr->pos.y })},
-				{"name", block_ptr->GetFullName()},
-			};
+			boost::json::object js_block;
+			js_block["id"] = block_ptr->id;
+			js_block["pos"] = boost::json::array({block_ptr->pos.x, block_ptr->pos.y });
+			js_block["name"] = block_ptr->GetFullName();
+			if(block_ptr->parameters.size()){
+
+				boost::json::array js_param_arr;
+				for(auto& p: block_ptr->parameters){
+					// std::monostate, bool, int64_t, double, std::string
+					if(std::holds_alternative<bool>(p))
+						js_param_arr.push_back(std::get<bool>(p));
+					else if(std::holds_alternative<int64_t>(p))
+						js_param_arr.push_back(std::get<int64_t>(p));
+					else if(std::holds_alternative<double>(p))
+						js_param_arr.push_back(std::get<double>(p));
+					else if(std::holds_alternative<std::string>(p))
+						js_param_arr.push_back(boost::json::string(std::get<std::string>(p)));
+					else
+						js_param_arr.push_back(nullptr);	
+				}
+
+				js_block["params"] = js_param_arr;
+			}
 
 			js_blocks.push_back(js_block);
 		}
@@ -301,23 +324,15 @@ private:
 
 		for (const auto& conn : connetions) {
 
-			int src_id = -1;
-			int dst_id = -1;
-
 			auto src = conn.src.lock();
 			auto dst = conn.dst.lock();
 			if (!src || !dst) continue;
 
-			src_id = src->id;
-			dst_id = dst->id;
-
-
-			boost::json::value js_conn = {
-				{"src",     src_id},
-				{"src_pin", conn.src_pin},
-				{"dst",     dst_id},
-				{"dst_pin", conn.dst_pin},
-			};
+			boost::json::object js_conn;
+			js_conn["src"] = src->id;
+			js_conn["src_pin"] = conn.src_pin;
+			js_conn["dst"] = dst->id;
+			js_conn["dst_pin"] = conn.dst_pin;
 
 			js_connections.push_back(js_conn);
 		}

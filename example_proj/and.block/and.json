@@ -1,1 +1,1 @@
-{"title":"and","inputs":[{"label":"A","type":"bool"},{"label":"B","type":"bool"},{"label":"C","type":"bool"},{"label":"D","type":"bool"}],"outputs":[{"label":"Q","type":"bool"},{"label":"nQ","type":"bool"}]}
+{"title":"and","inputs":[{"label":"A","type":"bool"},{"label":"B","type":"bool"}],"parameters":[],"outputs":[{"label":"Q","type":"bool"},{"label":"nQ","type":"bool"}]}

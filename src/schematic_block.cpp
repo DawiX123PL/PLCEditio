@@ -95,6 +95,10 @@ BlockData::Error BlockData::SerializeJson(std::string* data){
     for(const auto& i: inputs)
         js_inputs.push_back({{"label",i.label}, {"type", i.type}});
 
+    boost::json::array js_parameters;
+    for(const auto& p: parameters)
+        js_parameters.push_back({{"label",p.label}, {"type", p.type}});
+
     boost::json::array js_outputs;
     for(const auto& o: outputs)
         js_outputs.push_back({{"label",o.label}, {"type", o.type}});
@@ -104,6 +108,7 @@ BlockData::Error BlockData::SerializeJson(std::string* data){
 
     js["title"] = title;
     js.insert(boost::json::object::value_type("inputs", js_inputs));
+    js.insert(boost::json::object::value_type("parameters",js_parameters));
     js.insert(boost::json::object::value_type("outputs",js_outputs));
 
     *data = boost::json::serialize(js);
@@ -242,6 +247,52 @@ BlockData::Error BlockData::ParseJson(const std::string &str)
     }
     else
         return Error::JSON_MISSING_INPUTS_FIELD;
+
+
+    // 'parameters' field
+    if (auto js_parameters = js_obj.if_contains("parameters"))
+    {
+        if (auto js_parameters_arr = js_parameters->if_array())
+        {
+
+            // iterate over array
+            for (auto js_el : *js_parameters_arr)
+            {
+
+                if (auto js_el_obj = js_el.if_object())
+                {
+
+                    auto js_label = js_el_obj->if_contains("label");
+                    auto js_type = js_el_obj->if_contains("type");
+
+                    if (!js_label)
+                        return Error::JSON_PARAMETERS_EL_MISSING_LABEL;
+                    if (!js_type)
+                        return Error::JSON_PARAMETERS_EL_MISSING_TYPE;
+
+                    auto js_label_str = js_label->if_string();
+                    auto js_type_str = js_type->if_string();
+
+                    if (!js_label_str)
+                        return Error::JSON_PARAMETERS_EL_LABEL_NOT_A_STRING;
+                    if (!js_type_str)
+                        return Error::JSON_PARAMETERS_EL_TYPE_NOT_A_STRING;
+
+                    std::string label = js_label_str->c_str();
+                    std::string type  = js_type_str->c_str();
+
+                    parameters.emplace_back(label, type);
+                }
+                else
+                    return Error::JSON_PARAMETERS_EL_NOT_AN_OBJECT;
+            }
+        }
+        else
+            return Error::JSON_PARAMETERS_NOT_AN_ARRAY;
+    }
+    else
+        return Error::JSON_MISSING_PARAMETERS_FIELD;
+
 
     // 'outputs' field
     if (auto js_outputs = js_obj.if_contains("outputs"))

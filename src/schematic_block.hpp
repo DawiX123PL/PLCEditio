@@ -5,10 +5,14 @@
 #include <string>
 #include <fstream>
 #include <filesystem>
+#include <assert.h>
+#include <variant>
 #include <boost/json.hpp>
 #include <imgui.h>
 #include <imnodes.h>
-#include <assert.h>
+#include <imgui_internal.h>
+#include <misc/cpp/imgui_stdlib.h>
+
 
 
 class BlockData{
@@ -44,6 +48,8 @@ private:
 
     std::vector<IO> inputs;
     std::vector<IO> outputs;
+    std::vector<IO> parameters;
+
 
     inline int max(int a, int b){
         return a > b ? a : b; 
@@ -57,6 +63,10 @@ public:
     const std::filesystem::path& Path(){ return path; };
     const std::vector<IO>& Inputs(){ return inputs; };
     const std::vector<IO>& Outputs(){ return outputs; };
+    const std::vector<IO>& Parameters(){ return parameters; };
+    void SetInputs(const std::vector<IO>& _inputs){ inputs = _inputs; };
+    void SetOutputs(const std::vector<IO>& _outputs){ outputs = _outputs; };
+    void SetParameters(const std::vector<IO>& _parameters){ parameters = _parameters; };
 
     const std::string& Name(){return name;}
     const std::string FullName(){return name_prefix + "\\" + name;}
@@ -71,8 +81,8 @@ public:
         path = _path;
     };
 
-    void SetInputs(const std::vector<IO>& _inputs){ inputs = _inputs; };
-    void SetOutputs(const std::vector<IO>& _outputs){ outputs = _outputs; };
+    static constexpr float parameter_element_width = 100;
+
 
 public:
 
@@ -116,8 +126,26 @@ public:
     static inline int ImnodeToOutputID(ImGuiID id)           { return (id & 0b10000000) ? (id & 0b01111111)-1 : -1; }
 
 
+    std::vector<std::variant<std::monostate, bool, int64_t, double, std::string>> SetupParameterMemoryTypes(){
+        std::vector<std::variant<std::monostate, bool, int64_t, double, std::string>> param_mem;
 
-    int Render(int id){
+        for(auto& p: parameters){
+            if(p.type == "bool")
+                param_mem.emplace_back<bool>(false);
+            else if(p.type == "int")
+                param_mem.emplace_back<int64_t>(0);
+            else if(p.type == "double")
+                param_mem.emplace_back<double>(0.0);
+            else if(p.type == "string")
+                param_mem.emplace_back<std::string>("");
+            else
+                param_mem.emplace_back<std::monostate>(std::monostate());
+        }
+    }
+
+
+
+    int Render(int id, std::vector<std::variant<std::monostate, bool, int64_t, double, std::string>>& param_memory){
 
         int node_id = GetImnodeID(id);
         int input_id = GetImnodeInputID(id, 0);
@@ -125,21 +153,94 @@ public:
 
         ImNodes::BeginNode(node_id);
 
-        ImNodes::BeginNodeTitleBar();
-        ImGui::TextUnformatted(title.c_str());
-        ImNodes::EndNodeTitleBar();
+        // Title
+        // if(title.size() != 0){ // this feature does not work correctly
+            ImNodes::BeginNodeTitleBar();
+            ImGui::TextUnformatted(title.c_str());
+            ImNodes::EndNodeTitleBar();
+        // }
 
-        for(auto& i: inputs){
-            ImNodes::BeginInputAttribute(input_id++, ImNodesPinShape_Circle);
-            ImGui::Text(i.label.c_str());
-            ImNodes::EndInputAttribute();
-        }
+        // Inputs
+        ImGui::BeginGroup();
+            for(auto& i: inputs){
+                ImNodes::BeginInputAttribute(input_id++, ImNodesPinShape_Circle);
+                ImGui::Text(i.label.c_str());
+                ImNodes::EndInputAttribute();
+            }
+        ImGui::EndGroup();
 
-        for(auto& o: outputs){
-            ImNodes::BeginOutputAttribute(output_id++, ImNodesPinShape_Circle);
-            ImGui::Text(o.label.c_str());
-            ImNodes::EndOutputAttribute();
+        // Vertical Separator
+        if(inputs.size() && parameters.size()){
+            ImGui::SameLine();
+            ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
         }
+        ImGui::SameLine();
+
+        // Parameters
+        ImGui::BeginGroup();
+            ImGui::PushItemWidth(parameter_element_width);
+            int param_id = 1;
+            if(param_memory.size() != parameters.size()) param_memory.resize(parameters.size());
+
+            for(int i = 0; i <parameters.size(); i++){
+                auto& p = parameters[i];
+                auto& p_mem = param_memory[i];
+
+                ImGui::PushID(param_id++);
+
+                if(p.type == "bool"){
+                    if(!std::holds_alternative<bool>(p_mem)) p_mem = false;
+
+                    bool& val = std::get<bool>(p_mem);
+                    int int_val = val ? 1 : 0;
+                    ImGui::SliderInt(p.label.c_str(), &int_val, 0, 1);
+                    val = int_val != 0;
+
+                }
+                else if(p.type == "int"){
+                    if(!std::holds_alternative<int64_t>(p_mem)) p_mem = (int64_t) 0;
+                    ImGui::InputScalar(p.label.c_str(), ImGuiDataType_S64, &std::get<int64_t>(p_mem));
+
+                }
+                else if(p.type == "double"){
+                    if(!std::holds_alternative<double>(p_mem)) p_mem = (double) 0.0;
+                    double& val = std::get<double>(p_mem);
+
+                    const char* format = (val > 1000000.0) || (val < 1.0/1000000.0) ? "%.6e" : "%.6f";
+                    ImGui::InputDouble(p.label.c_str(), &val, 0, 0, format);
+                }
+                else if(p.type == "string"){
+                    if(!std::holds_alternative<std::string>(p_mem)) p_mem = std::string("");
+                    ImGui::InputText(p.label.c_str(), &std::get<std::string>(p_mem));
+                }
+                else{
+                    ImGui::Text(p.label.c_str());
+                }
+                
+                ImGui::PopID();
+            }
+
+            ImGui::PopItemWidth();
+        ImGui::EndGroup();
+        
+        
+        // Vertical Separator
+        if((parameters.size() && outputs.size())|| (inputs.size()  && outputs.size())){
+            ImGui::SameLine();
+            ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+        }
+        ImGui::SameLine();
+
+        
+        // Outputs
+        ImGui::BeginGroup();
+            for(auto& o: outputs){
+                ImNodes::BeginOutputAttribute(output_id++, ImNodesPinShape_Circle);
+                ImGui::Text(o.label.c_str());
+                ImNodes::EndOutputAttribute();
+            }
+        ImGui::EndGroup();
+
 
         ImNodes::EndNode();
 
@@ -168,6 +269,14 @@ public:
         JSON_INPUTS_NOT_AN_ARRAY,
         JSON_MISSING_INPUTS_FIELD,
 
+        JSON_PARAMETERS_EL_MISSING_LABEL,
+        JSON_PARAMETERS_EL_MISSING_TYPE,
+        JSON_PARAMETERS_EL_LABEL_NOT_A_STRING,
+        JSON_PARAMETERS_EL_TYPE_NOT_A_STRING,
+        JSON_PARAMETERS_EL_NOT_AN_OBJECT,
+        JSON_PARAMETERS_NOT_AN_ARRAY,
+        JSON_MISSING_PARAMETERS_FIELD,
+
         JSON_OUTPUTS_EL_LABEL_NOT_A_STRING,
         JSON_OUTPUTS_EL_TYPE_NOT_A_STRING,
         JSON_OUTPUTS_EL_MISSING_LABEL,
@@ -187,6 +296,7 @@ public:
 
         inputs.clear();
         outputs.clear();
+        parameters.clear();
     }
 
 

@@ -356,10 +356,11 @@ private:
                 try{ block_create_new_name = path.stem().string(); } catch(...){}
             }
 
-            bool is_exists = std::filesystem::exists(path);
+            std::error_code err;
+            bool is_exists = std::filesystem::exists(path, err);
             
             
-            if(is_exists){ 
+            if(!err && is_exists){
                 ImGui::TextColored(ImColor(255,0,0,255), "Block with that name already exists");
                 can_create = false;
             }
@@ -401,7 +402,7 @@ private:
 
                     // library.push_back(block_ptr);
 
-                    // if(block_create_editor_after_creation)
+                    //if(block_create_editor_after_creation)
                     //     block_editors.emplace_back(block_ptr); // open editor after creation 
 
                     event_log.PushBack(DebugLogger::Priority::SUCCESS, "Created new block");

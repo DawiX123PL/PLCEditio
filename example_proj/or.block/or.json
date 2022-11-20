@@ -1,0 +1,1 @@
+{"title":"or","inputs":[{"label":"A","type":"bool"},{"label":"B","type":"bool"}],"parameters":[],"outputs":[{"label":"Q","type":"bool"},{"label":"nQ","type":"bool"}]}

@@ -3,124 +3,80 @@
         {
             "id": 5,
             "pos": [
-                434,
-                153
+                850,
+                403
             ],
-            "loc": "PROJ",
             "name": "\\LOCAL\\and"
         },
         {
             "id": 6,
             "pos": [
-                276,
-                144
+                752,
+                398
             ],
-            "loc": "PROJ",
-            "name": "\\LOCAL\\input"
+            "name": "\\LOCAL\\not"
         },
         {
             "id": 7,
             "pos": [
-                278,
-                213
+                655,
+                403
             ],
-            "loc": "PROJ",
-            "name": "\\LOCAL\\input"
-        },
-        {
-            "id": 8,
-            "pos": [
-                567,
-                141
-            ],
-            "loc": "PROJ",
-            "name": "\\LOCAL\\output"
+            "name": "\\LOCAL\\or"
         },
         {
             "id": 9,
             "pos": [
-                573,
-                216
+                490,
+                516
             ],
-            "loc": "PROJ",
-            "name": "\\LOCAL\\output"
+            "name": "\\LOCAL\\int_const",
+            "params": [
+                123123
+            ]
         },
         {
             "id": 10,
             "pos": [
-                552,
-                309
+                489,
+                453
             ],
-            "loc": "PROJ",
-            "name": "\\LOCAL\\output"
-        },
-        {
-            "id": 11,
-            "pos": [
-                431,
-                301
-            ],
-            "loc": "PROJ",
-            "name": "\\LOCAL\\L1\\test1"
-        },
-        {
-            "id": 12,
-            "pos": [
-                557,
-                373
-            ],
-            "loc": "PROJ",
-            "name": "\\LOCAL\\test1"
+            "name": "\\LOCAL\\bool_const",
+            "params": [
+                true
+            ]
         }
     ],
     "connections": [
         {
-            "src": 5,
+            "src": 6,
             "src_pin": 0,
-            "dst": 8,
+            "dst": 5,
             "dst_pin": 0
         },
         {
-            "src": 5,
+            "src": 7,
+            "src_pin": 0,
+            "dst": 6,
+            "dst_pin": 0
+        },
+        {
+            "src": 7,
             "src_pin": 1,
-            "dst": 9,
-            "dst_pin": 0
-        },
-        {
-            "src": 7,
-            "src_pin": 0,
             "dst": 5,
             "dst_pin": 1
         },
         {
-            "src": 6,
+            "src": 10,
             "src_pin": 0,
-            "dst": 5,
+            "dst": 7,
             "dst_pin": 0
         },
         {
-            "src": 11,
+            "src": 9,
             "src_pin": 0,
-            "dst": 12,
+            "dst": 7,
             "dst_pin": 1
-        },
-        {
-            "src": 11,
-            "src_pin": 0,
-            "dst": 10,
-            "dst_pin": 0
-        },
-        {
-            "src": 7,
-            "src_pin": 0,
-            "dst": 11,
-            "dst_pin": 1
-        },
-        {
-            "src": 6,
-            "src_pin": 0,
-            "dst": 11,
-            "dst_pin": 0
         }
     ]
 }

@@ -3,10 +3,11 @@
 
 
 //////****** end includes ******//////
-namespace LOCAL{ 
+namespace __LOCAL{ 
  
-    class and_block{ 
+    class not_block{ 
     public: 
+        bool* input0;
         bool  output0;
 
 //////****** begin functions ******//////
@@ -16,7 +17,7 @@ namespace LOCAL{
         }
 
         void Update(){
-            output0 = true;
+            
         }
 
 

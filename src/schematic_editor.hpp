@@ -120,7 +120,7 @@ public:
                     auto block_data = block->lib_block.lock();
                     
                     if(block_data){
-                        int id = block_data->Render(block->id);
+                        int id = block_data->Render(block->id, block->parameters);
                     }
                 }
             }

@@ -19,10 +19,13 @@ class BlockEditor: public WindowObject{
     ImNodesContext* context;
 
     static constexpr int io_count_limit = 126;
+    int parameters_count;
     int inputs_count;
     int outputs_count;
 
     BlockData block_copy;
+
+    std::vector<std::variant<std::monostate, bool, int64_t, double, std::string>> block_memory;
 
     bool show_prewiev;
     bool center_on_start;
@@ -74,6 +77,7 @@ public:
 
         inputs_count = _block->Inputs().size();
         outputs_count = _block->Outputs().size();
+        parameters_count = _block->Parameters().size();
 
         block_copy = *_block;
         
@@ -150,8 +154,7 @@ public:
                 } 
 
                 ImNodes::BeginNodeEditor();
-
-                block_id = block_copy.Render(1);
+                block_id = block_copy.Render(1, block_memory);
 
                 ImNodes::EndNodeEditor();
 
@@ -210,6 +213,44 @@ public:
 
                     // unnecessary copy (Again) 
                     block_copy.SetInputs(inputs);
+                }
+
+
+                ImGui::BeginDisabled(is_std_block);
+                if(ImGui::InputInt("Parameters count", &parameters_count, 1, 1)){
+                    no_saved = true;
+                    parameters_count = parameters_count > 0 ? parameters_count : 0;
+                    parameters_count = parameters_count < io_count_limit ? parameters_count : io_count_limit;
+                }
+                ImGui::EndDisabled();
+
+
+                { // Parameters 
+                    // unnecessary copy 
+                    // Fix in future
+                    auto parameters = block_copy.Parameters();
+
+                    if(parameters_count != parameters.size()) parameters.resize(parameters_count);
+
+                    if(ImGui::TreeNode("parameters")){
+                        for(int i = 0; i < parameters.size(); i++){
+                            ImGui::PushID(i);
+
+                            if(ImGui::TreeNode(&i, "input %d", i)){
+                                ImGui::BeginDisabled(is_std_block);
+                                    ImGui::InputText("Label", &parameters[i].label);
+                                    ImGui::InputText("Type", &parameters[i].type);
+                                ImGui::EndDisabled();
+                                ImGui::TreePop();
+                            }
+
+                            ImGui::PopID();
+                        }
+                        ImGui::TreePop();
+                    }
+
+                    // unnecessary copy (Again) 
+                    block_copy.SetParameters(parameters);
                 }
 
 
