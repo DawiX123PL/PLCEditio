@@ -29,6 +29,8 @@ const char* Schematic::ErrorToStr(Error err) {
 	case Error::JSON_BLOCK_INVALID_LOC: return "JSON_BLOCK_INVALID_LOC";
 	case Error::JSON_BLOCK_NAME_NOT_STRING: return "JSON_BLOCK_NAME_NOT_STRING";
 	case Error::JSON_BLOCK_MISSING_NAME: return "JSON_BLOCK_MISSING_NAME";
+	case Error::JSON_BLOCK_PARAMETER_INVALID_TYPE: return "JSON_BLOCK_PARAMETER_INVALID_TYPE";
+	case Error::JSON_BLOCK_PARAMS_NOT_ARRAY: return "JSON_BLOCK_PARAMS_NOT_ARRAY";
 	case Error::JSON_CONNECTION_NOT_AN_OBJECT: return "JSON_CONNECTION_NOT_AN_OBJECT";
 	case Error::JSON_CONNECTION_IS_INVALID: return "JSON_CONNECTION_IS_INVALID";
 	case Error::JSON_CONNECTION_INVALID_SRC: return "JSON_CONNECTION_INVALID_SRC";
@@ -271,6 +273,33 @@ Schematic::Error Schematic::ParseJsonBlock(const boost::json::value& js, Block* 
 		else return Error::JSON_BLOCK_NAME_NOT_STRING;
 	}
 	else return Error::JSON_BLOCK_MISSING_NAME;
+
+	// get params
+	// dont throw error if missing
+	if (auto js_params = js_obj.if_contains("params")){
+		if(auto js_params_arr = js_params->if_array()){
+			
+			for(auto& js_par: *js_params_arr){
+
+				if(js_par.is_null())
+					block->parameters.emplace_back<std::monostate>(std::monostate());
+				else if(js_par.is_bool())
+					block->parameters.emplace_back(js_par.as_bool());
+				else if(js_par.is_int64())
+					block->parameters.emplace_back(js_par.as_int64());
+				else if(js_par.is_uint64())
+					block->parameters.emplace_back((int64_t)js_par.as_uint64());
+				else if(js_par.is_double())
+					block->parameters.emplace_back(js_par.as_double());
+				else if(js_par.is_string())
+					block->parameters.emplace_back(js_par.as_string().c_str());
+				else
+					return Error::JSON_BLOCK_PARAMETER_INVALID_TYPE; 
+					
+			}
+
+		}else return Error::JSON_BLOCK_PARAMS_NOT_ARRAY;
+	}
 
 	return Error::OK;
 }
