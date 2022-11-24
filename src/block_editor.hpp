@@ -46,18 +46,31 @@ class BlockEditor: public WindowObject{
     
     bool is_code_loaded = false;
 
-    std::string block_code;
 
-    std::string block_code_user_include;
-    std::string block_code_class_prolog;
-    std::string block_code_user_class_body;
-    std::string block_code_class_epilog;
 
-    int block_code_size_user_include;
-    int block_code_size_class_prolog;
-    int block_code_size_user_class_body;
-    int block_code_size_class_epilog;
+    struct BlockCode{
+        struct Text{
+            std::string str;
+            float height;
+            void CalcSize(){
+                height = ImGui::CalcTextSize((str + "x").c_str()).y;
+            }
+            ImVec2 GetSize(){
+                if(height <= 0) CalcSize();
+                float style_height = ImGui::GetStyle().FramePadding.x;
+                return ImVec2(ImGui::GetWindowWidth(), height + style_height * 2);
+            }
+        };
 
+        Text user_include;
+        Text r_class_prolog;
+        Text user_functions;
+        Text r_init_func_prolog;
+        Text user_init_func_body;
+        Text r_update_func_prolog;
+        Text user_update_func_body;
+        Text r_class_epilog;
+    } block_code;
 
 
 public:
@@ -294,15 +307,16 @@ public:
                 ImGui::Separator();
 
                 if(ImGui::Button("Edit Code", ImVec2(ImGui::GetWindowWidth(), 0))){ 
-                    BlockData::Error err = block_copy.ReadCode(&block_code);
-
-                    // convert '\r' -> '\n' for simplicity
-                    boost::replace_all(block_code, "\r", "\n");
+                                        
+                    std::string code;
+                    BlockData::Error err = block_copy.ReadCode(&code);
 
                     if(err == BlockData::Error::OK){
-                        PreprocessUserCode();
+                        // convert '\r' -> '\n' for simplicity
+                        boost::replace_all(code, "\r", "\n");
+                        PreprocessUserCode(code);
                     }else{
-                        InitUserCode();
+                        PreprocessUserCode("");
                     }
                     is_code_loaded = true;
                     show_code_editor = true;
@@ -350,13 +364,12 @@ private:
         auto block_ptr = block.lock();
         if(block_ptr && !is_std_block){
             *block_ptr = block_copy;
+            
+            std::string code = MergeCode();
             block_ptr->Save();
-            block_ptr->SaveCode(block_code);
-            no_saved = false;    
-            if(is_code_loaded){
-                MergeCode();
-                block_ptr->SaveCode(block_code);
-            }
+            block_ptr->SaveCode(code);
+
+            no_saved = false;
         } 
     }
 
@@ -394,38 +407,40 @@ private:
             ImGui::BeginChild("##CODE");
                 ImGui::BeginDisabled(is_std_block);
 
-                // ImVec2 size = ImGui::CalcTextSize((block_code + "\n\n\n\nX").c_str());
-                // size.x = ImGui::GetWindowWidth();
+                
+                auto DisplayCode = 
+                    [this](const char* id_str, bool read_only, BlockCode::Text& text)
+                    {
+                        ImGuiInputTextFlags flags = ImGuiInputTextFlags_AllowTabInput;
+                        if(read_only)
+                        {
+                            flags |= ImGuiInputTextFlags_ReadOnly;
+                            ImGui::PushStyleColor(ImGuiCol_FrameBg, (ImVec4)ImColor(0, 0, 0, 0));
+                        }
+                        if(ImGui::InputTextMultiline(id_str, &text.str, text.GetSize(), flags)){
+                            text.CalcSize();
+                            no_saved = true;   
+                        }
+                        if(read_only){
+                            ImGui::PopStyleColor();
+                        }
+                    };
 
-                // if(ImGui::InputTextMultiline("##code", &block_code, size, ImGuiInputTextFlags_AllowTabInput)){
-                //     no_saved = true;
-                // }
 
 
-                block_code_size_user_include = ImGui::CalcTextSize((block_code_user_include + "\nX").c_str()).y;
-                block_code_size_user_class_body = ImGui::CalcTextSize((block_code_user_class_body + "\nX").c_str()).y;
+                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(ImGui::GetStyle().FramePadding.x, 0));
+                ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
 
-                ImVec2 size_include = ImVec2(ImGui::GetWindowWidth(), block_code_size_user_include);
-                ImVec2 size_prolog  = ImVec2(ImGui::GetWindowWidth(), block_code_size_class_prolog);
-                ImVec2 size_body    = ImVec2(ImGui::GetWindowWidth(), block_code_size_user_class_body);
-                ImVec2 size_epilog  = ImVec2(ImGui::GetWindowWidth(), block_code_size_class_epilog);
+                DisplayCode("##user_include",          false, block_code.user_include);
+                DisplayCode("##r_class_prolog",        true,  block_code.r_class_prolog);
+                DisplayCode("##user_functions",        false, block_code.user_functions);
+                DisplayCode("##r_init_func_prolog",    true,  block_code.r_init_func_prolog);
+                DisplayCode("##user_init_func_body",   false, block_code.user_init_func_body);
+                DisplayCode("##r_update_func_prolog",  true,  block_code.r_update_func_prolog);
+                DisplayCode("##user_update_func_body", false, block_code.user_update_func_body);
+                DisplayCode("##r_class_epilog",        true,  block_code.r_class_epilog);
 
-
-                if(ImGui::InputTextMultiline("##code_includes", &block_code_user_include,    size_include,ImGuiInputTextFlags_AllowTabInput ))
-                    no_saved = true;
-
-                ImGui::PushStyleColor(ImGuiCol_FrameBg, (ImVec4)ImColor(0, 0, 0, 0));
-                if(ImGui::InputTextMultiline("##code_prolog",   &block_code_class_prolog,    size_prolog, ImGuiInputTextFlags_AllowTabInput | ImGuiInputTextFlags_ReadOnly))
-                    no_saved = true;
-                ImGui::PopStyleColor();
-
-                if(ImGui::InputTextMultiline("##code_body",     &block_code_user_class_body, size_body,   ImGuiInputTextFlags_AllowTabInput ))
-                    no_saved = true;
-
-                ImGui::PushStyleColor(ImGuiCol_FrameBg, (ImVec4)ImColor(0,0,0,0));
-                if(ImGui::InputTextMultiline("##code_epilog",   &block_code_class_epilog,    size_epilog, ImGuiInputTextFlags_AllowTabInput | ImGuiInputTextFlags_ReadOnly))
-                    no_saved = true;
-                ImGui::PopStyleColor();
+                ImGui::PopStyleVar(2);
 
 
                 ImGui::EndDisabled();
@@ -439,81 +454,129 @@ private:
     }
 
 
-    void PreprocessUserCode(){
-        CodeExtractSection(block_code, &block_code_user_include, "includes");
-        CodeExtractSection(block_code, &block_code_user_class_body, "functions");
+    void PreprocessUserCode(const std::string& code){
 
-        block_code_size_user_include = ImGui::CalcTextSize((block_code_user_include + "\nX").c_str()).y;
-        block_code_size_user_class_body = ImGui::CalcTextSize((block_code_user_class_body + "\nX").c_str()).y;
+        CodeExtractSection(code, &block_code.user_include, "includes");
+        CodeExtractSection(code, &block_code.user_functions, "functions");
+        CodeExtractSection(code, &block_code.user_init_func_body, "includes");
+        CodeExtractSection(code, &block_code.user_update_func_body, "functions");
+
     }
 
-    void InitUserCode(){
-        block_code_user_include = "\n";
-        block_code_user_class_body = 
-            "\n"
-            "        void Init(){\n"
-            "\n"
-            "        }\n"
-            "\n"
-            "        void Update(){\n"
-            "            \n"
-            "        }\n"
-            "\n";
-    }
 
 
     void PreprocessComputedCode(){
 
-        std::string block_namespace = block_copy.GetNamePrefix();
-        boost::replace_all(block_namespace, "\\", "__");
 
-        block_code_class_prolog = 
-            "namespace " + block_namespace + "{ \n"
-            " \n"
-            "    class " + block_copy.Name() + "_block{ \n"
-            "    public: \n";
-            // "        bool input0; \n"
-            // "        bool input1; \n"
-            // "        bool output0; \n"
-            // "        bool output1; \n";
-        
-        auto inputs = block_copy.Inputs();
-        for(int i = 0; i < inputs.size(); i++){
-            block_code_class_prolog +=
-            "        " + inputs[i].type + "* input" + std::to_string(i) + ";\n";
+        // EXAMPLE BLOCK CODE
+
+        //          //////****** begin includes ******//////
+        //          
+        //          //////****** end includes ******//////
+        //          namespace __LOCAL{ 
+        //          
+        //              class test_block{ 
+        //              public: 
+        //                  double* input0;
+        //                  double* input1;
+        //                  double  output0;
+        //          
+        //          //////****** begin functions ******//////
+        //          
+        //          //////****** end functions ******//////
+        //          
+        //                  void init(){
+        //          //////****** begin init ******//////
+        //          
+        //          //////****** begin init ******//////
+        //                  }
+        //          
+        //          		void update(){
+        //          //////****** begin update ******//////
+        //          			output0 = *input0 + *input1;
+        //          //////****** begin update ******//////
+        //          		}
+        //          
+        //              };
+        //          };
+
+
+        {
+            block_code.r_class_prolog.str = 
+                "class " + block_copy.Name() + "_block{ \n"
+                "public: \n";
+            
+            auto inputs = block_copy.Inputs();
+            for(int i = 0; i < inputs.size(); i++){
+                block_code.r_class_prolog.str +=
+                "    " + inputs[i].type + "* input" + std::to_string(i) + ";\n";
+            }
+
+            auto parameters = block_copy.Parameters();
+            for(int i = 0; i < parameters.size(); i++){
+                block_code.r_class_prolog.str +=
+                "    " + parameters[i].type + "  parameter" + std::to_string(i) + ";\n";
+            }
+
+            auto outputs = block_copy.Outputs();
+            for(int i = 0; i < outputs.size(); i++){
+                block_code.r_class_prolog.str +=
+                "    " + outputs[i].type + "  output" + std::to_string(i) + ";\n";
+            }
+
+            block_code.r_class_prolog.CalcSize();
         }
 
-        auto outputs = block_copy.Outputs();
-        for(int i = 0; i < outputs.size(); i++){
-            block_code_class_prolog +=
-            "        " + outputs[i].type + "  output" + std::to_string(i) + ";\n";
+        {
+            block_code.r_init_func_prolog.str =
+                "\n" 
+                "    void init(){";
+
+            block_code.r_init_func_prolog.CalcSize();
         }
 
-        block_code_class_epilog = 
-            "    };\n"
-            "};\n";
+        {
+            block_code.r_update_func_prolog.str = 
+                "    }\n"
+                "\n"        
+                "    void update(){";
+            block_code.r_update_func_prolog.CalcSize();           
+        }
 
-        block_code_size_class_prolog = ImGui::CalcTextSize((block_code_class_prolog + "\nX").c_str()).y;
-        block_code_size_class_epilog = ImGui::CalcTextSize((block_code_class_epilog + "\nX").c_str()).y;
+        {
+            block_code.r_class_epilog.str = 
+                    "    }\n"
+                    "};\n";
+            block_code.r_class_epilog.CalcSize();
+        }
+
     }
 
 
-    void MergeCode(){
-        block_code =
-            + "\n//////****** begin includes ******//////\n"
-            + block_code_user_include
+    std::string MergeCode(){
+        return
+              "\n//////****** begin includes ******//////\n"
+            + block_code.user_include.str
             + "\n//////****** end includes ******//////\n"
-            + block_code_class_prolog
+            + block_code.r_class_prolog.str
             + "\n//////****** begin functions ******//////\n"
-            + block_code_user_class_body
+            + block_code.user_functions.str
             + "\n//////****** end functions ******//////\n"
-            + block_code_class_epilog;
+            + block_code.r_init_func_prolog.str
+            + "\n//////****** begin init ******//////\n"
+            + block_code.user_init_func_body.str
+            + "\n//////****** end init ******//////\n"
+            + block_code.r_update_func_prolog.str
+            + "\n//////****** begin update ******//////\n"
+            + block_code.user_update_func_body.str
+            + "\n//////****** end update ******//////\n"
+            + block_code.r_class_epilog.str;
     }
 
 
 
 
-    bool CodeExtractSection(const std::string& code, std::string* result, std::string marker){
+    bool CodeExtractSection(const std::string& code, BlockCode::Text* result, std::string marker){
 
         std::string begin_marker = "\n//////****** begin " + marker + " ******//////\n";
         std::string end_marker = "\n//////****** end " + marker + " ******//////\n";
@@ -529,7 +592,9 @@ private:
 
         if(section_len <= 0) return false;
 
-        *result = code.substr(begin_pos, section_len); 
+        result->str = code.substr(begin_pos, section_len); 
+        result->CalcSize();
+
         return true;
     }
 
