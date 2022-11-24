@@ -23,6 +23,62 @@ class BlockEditor: public WindowObject{
     int inputs_count;
     int outputs_count;
 
+
+
+    struct Block_IO{
+        enum class Type                            { BOOL_T,  DOUBLE_T, INT64_T,   STRING_T,      USER_TYPE  };
+        static constexpr char const* names[] =     { "Bool",  "Double", "Int64",   "String",      "-User Type-"};
+        static constexpr char const* cpp_names[] = { "bool",  "double", "int64_t", "std::string", "bool"};
+        static constexpr int names_count =  sizeof(names)/sizeof(names[0]);
+
+        std::string label;
+        Type type;
+        std::string type_str;
+
+        Block_IO() { 
+            label = ""; 
+            type = Type::BOOL_T;
+            type_str = "bool";
+        };
+        Block_IO(BlockData::IO io){
+            Block_IO();
+            FromBlockIO(io);
+        }
+
+        void SetType(Type t){
+            type = t;
+            if(t != Type::USER_TYPE)
+                type_str = cpp_names[(int)t];
+        }
+
+        void SetType(std::string s){
+            type_str = s;
+            type = Type::USER_TYPE;
+        }
+
+        BlockData::IO ToBlockIO(){
+            if(type != Type::USER_TYPE)
+                return BlockData::IO(label, cpp_names[(int)type]);
+            else
+                return BlockData::IO(label, type_str);
+        }
+
+        void FromBlockIO(BlockData::IO io){
+            label = io.label;
+            type_str = io.type;
+            if     (io.type == "bool")        type = Type::BOOL_T;
+            else if(io.type == "double")      type = Type::DOUBLE_T;
+            else if(io.type == "int64_t")     type = Type::INT64_T;
+            else if(io.type == "std::string") type = Type::STRING_T;
+            else type = Type::USER_TYPE;
+        }
+    };
+
+    std::vector<Block_IO> inputs_types;
+    std::vector<Block_IO> parameters_types;
+    std::vector<Block_IO> outputs_types;
+
+
     BlockData block_copy;
 
     std::vector<std::variant<std::monostate, bool, int64_t, double, std::string>> block_memory;
@@ -93,6 +149,8 @@ public:
         parameters_count = _block->Parameters().size();
 
         block_copy = *_block;
+
+        BlockIOsToInternal(block_copy);
         
         // check if block is from STD
         std::string full_name = _block->FullName();
@@ -111,6 +169,36 @@ public:
         ImNodes::EditorContextFree(context_editor);
         ImNodes::DestroyContext(context);
     }
+
+
+    void BlockIOsToInternal(BlockData b){
+        std::vector<BlockData::IO> b_inputs = b.Inputs();
+        std::vector<BlockData::IO> b_parameters = b.Parameters();
+        std::vector<BlockData::IO> b_outputs = b.Outputs();
+        
+        inputs_types.clear();
+        parameters_types.clear();
+        outputs_types.clear();
+
+        for(BlockData::IO in: b_inputs) inputs_types.emplace_back(in);
+        for(BlockData::IO param: b_parameters) parameters_types.emplace_back(param);
+        for(BlockData::IO out: b_outputs) outputs_types.emplace_back(out);
+    }
+
+    void InternalIOsToBlock(BlockData* b){
+        std::vector<BlockData::IO> b_inputs;
+        std::vector<BlockData::IO> b_parameters;
+        std::vector<BlockData::IO> b_outputs;
+
+        for(Block_IO in: inputs_types) b_inputs.emplace_back(in.ToBlockIO());
+        for(Block_IO param: parameters_types) b_parameters.emplace_back(param.ToBlockIO());
+        for(Block_IO out: outputs_types) b_outputs.emplace_back(out.ToBlockIO());
+
+        b->SetInputs(b_inputs);
+        b->SetParameters(b_parameters);
+        b->SetOutputs(b_outputs);
+    }
+
 
 
     bool IsNoSaved(){return no_saved;}
@@ -201,20 +289,25 @@ public:
 
 
                 { // Inputs 
-                    // unnecessary copy 
-                    // Fix in future
-                    auto inputs = block_copy.Inputs();
-
-                    if(inputs_count != inputs.size()) inputs.resize(inputs_count);
+                    if(inputs_count != inputs_types.size()) inputs_types.resize(inputs_count);
 
                     if(ImGui::TreeNode("Inputs")){
-                        for(int i = 0; i < inputs.size(); i++){
+                        for(int i = 0; i < inputs_types.size(); i++){
                             ImGui::PushID(i);
 
                             if(ImGui::TreeNode(&i, "input %d", i)){
                                 ImGui::BeginDisabled(is_std_block);
-                                    ImGui::InputText("Label", &inputs[i].label);
-                                    ImGui::InputText("Type", &inputs[i].type);
+                                    ImGui::InputText("Label", &inputs_types[i].label);
+
+                                    int type = (int)inputs_types[i].type;
+                                    if(ImGui::Combo("Type", &type,Block_IO::names, Block_IO::names_count)){
+                                        inputs_types[i].SetType((Block_IO::Type)type);
+                                    }
+
+                                    if(inputs_types[i].type == Block_IO::Type::USER_TYPE){
+                                        ImGui::InputText("##UserType", &inputs_types[i].type_str, ImGuiInputTextFlags_CharsNoBlank);
+                                    }
+
                                 ImGui::EndDisabled();
                                 ImGui::TreePop();
                             }
@@ -223,10 +316,7 @@ public:
                         }
                         ImGui::TreePop();
                     }
-
-                    // unnecessary copy (Again) 
-                    block_copy.SetInputs(inputs);
-                }
+                } // End Inputs 
 
 
                 ImGui::BeginDisabled(is_std_block);
@@ -239,20 +329,25 @@ public:
 
 
                 { // Parameters 
-                    // unnecessary copy 
-                    // Fix in future
-                    auto parameters = block_copy.Parameters();
-
-                    if(parameters_count != parameters.size()) parameters.resize(parameters_count);
+                    if(parameters_count != parameters_types.size()) parameters_types.resize(parameters_count);
 
                     if(ImGui::TreeNode("parameters")){
-                        for(int i = 0; i < parameters.size(); i++){
+                        for(int i = 0; i < parameters_types.size(); i++){
                             ImGui::PushID(i);
 
                             if(ImGui::TreeNode(&i, "input %d", i)){
                                 ImGui::BeginDisabled(is_std_block);
-                                    ImGui::InputText("Label", &parameters[i].label);
-                                    ImGui::InputText("Type", &parameters[i].type);
+                                    ImGui::InputText("Label", &parameters_types[i].label);
+
+                                    int type = (int)parameters_types[i].type;
+                                    if(ImGui::Combo("Type", &type,Block_IO::names, Block_IO::names_count)){
+                                        parameters_types[i].SetType((Block_IO::Type)type);
+                                    }
+
+                                    if(parameters_types[i].type == Block_IO::Type::USER_TYPE){
+                                        ImGui::InputText("##UserType", &parameters_types[i].type_str, ImGuiInputTextFlags_CharsNoBlank);
+                                    }
+
                                 ImGui::EndDisabled();
                                 ImGui::TreePop();
                             }
@@ -261,10 +356,7 @@ public:
                         }
                         ImGui::TreePop();
                     }
-
-                    // unnecessary copy (Again) 
-                    block_copy.SetParameters(parameters);
-                }
+                } // End Parameters 
 
 
                 ImGui::BeginDisabled(is_std_block);
@@ -276,21 +368,27 @@ public:
                 ImGui::EndDisabled();
 
 
-                { // Inputs 
-                    // unnecessary copy 
-                    // Fix in future
-                    auto outputs = block_copy.Outputs();
-
-                    if(outputs_count != outputs.size()) outputs.resize(outputs_count);
+                { // Outputs 
+                    if(outputs_count != outputs_types.size()) outputs_types.resize(outputs_count);
 
                     if(ImGui::TreeNode("Outputs")){
-                        for(int i = 0; i < outputs.size(); i++){
+                        for(int i = 0; i < outputs_types.size(); i++){
                             ImGui::PushID(i);
 
                             if(ImGui::TreeNode(&i, "output %d", i)){
                                 ImGui::BeginDisabled(is_std_block);
-                                    ImGui::InputText("Label", &outputs[i].label);
-                                    ImGui::InputText("Type", &outputs[i].type);
+                                    ImGui::InputText("Label", &outputs_types[i].label);
+                                    
+                                    int type = (int)outputs_types[i].type;
+                                    if(ImGui::Combo("Type", &type,Block_IO::names, Block_IO::names_count)){
+                                        outputs_types[i].SetType((Block_IO::Type)type);
+                                    }
+
+                                    if(outputs_types[i].type == Block_IO::Type::USER_TYPE){
+                                        ImGui::InputText("##UserType", &outputs_types[i].type_str, ImGuiInputTextFlags_CharsNoBlank);
+                                    }
+
+
                                 ImGui::EndDisabled();
                                 ImGui::TreePop();
                             }
@@ -299,15 +397,14 @@ public:
                         }
                         ImGui::TreePop();
                     }
+                } // End Outputs
 
-                    // unnecessary copy (Again) 
-                    block_copy.SetOutputs(outputs);
-                }
+                InternalIOsToBlock(&block_copy);
 
                 ImGui::Separator();
 
                 if(ImGui::Button("Edit Code", ImVec2(ImGui::GetWindowWidth(), 0))){ 
-                                        
+
                     std::string code;
                     BlockData::Error err = block_copy.ReadCode(&code);
 
@@ -458,8 +555,8 @@ private:
 
         CodeExtractSection(code, &block_code.user_include, "includes");
         CodeExtractSection(code, &block_code.user_functions, "functions");
-        CodeExtractSection(code, &block_code.user_init_func_body, "includes");
-        CodeExtractSection(code, &block_code.user_update_func_body, "functions");
+        CodeExtractSection(code, &block_code.user_init_func_body, "init");
+        CodeExtractSection(code, &block_code.user_update_func_body, "update");
 
     }
 

@@ -132,11 +132,11 @@ public:
         for(auto& p: parameters){
             if(p.type == "bool")
                 param_mem.emplace_back<bool>(false);
-            else if(p.type == "int")
+            else if(p.type == "int64_t")
                 param_mem.emplace_back<int64_t>(0);
             else if(p.type == "double")
                 param_mem.emplace_back<double>(0.0);
-            else if(p.type == "string")
+            else if(p.type == "std::string")
                 param_mem.emplace_back<std::string>("");
             else
                 param_mem.emplace_back<std::monostate>(std::monostate());
@@ -197,7 +197,7 @@ public:
                     val = int_val != 0;
 
                 }
-                else if(p.type == "int"){
+                else if(p.type == "int64_t"){
                     if(!std::holds_alternative<int64_t>(p_mem)) p_mem = (int64_t) 0;
                     ImGui::InputScalar(p.label.c_str(), ImGuiDataType_S64, &std::get<int64_t>(p_mem));
 
@@ -209,7 +209,7 @@ public:
                     const char* format = (val > 1000000.0) || (val < 1.0/1000000.0) ? "%.6e" : "%.6f";
                     ImGui::InputDouble(p.label.c_str(), &val, 0, 0, format);
                 }
-                else if(p.type == "string"){
+                else if(p.type == "std::string"){
                     if(!std::holds_alternative<std::string>(p_mem)) p_mem = std::string("");
                     ImGui::InputText(p.label.c_str(), &std::get<std::string>(p_mem));
                 }
