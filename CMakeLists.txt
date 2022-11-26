@@ -69,6 +69,7 @@ add_executable(PLCEditio
             "./src/block_editor.hpp"
             "./src/librarian.cpp"
             "./src/librarian.hpp"
+            "./src/tcp_client.hpp"
             )
 
 add_subdirectory("libs/glfw")

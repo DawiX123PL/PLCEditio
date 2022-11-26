@@ -16,10 +16,10 @@ class DebugLogger : public WindowObject{
 
 public:
     enum class Priority {
-        SUCCESS,
-        INFO,
-        WARNING,
-        ERROR,
+        _SUCCESS,
+        _INFO,
+        _WARNING,
+        _ERROR,
     };
 
 private:
@@ -35,10 +35,10 @@ private:
 
     ImU32 GetPriorityColor(Priority prio){
         switch (prio) {
-        case Priority::SUCCESS:  return IM_COL32(70,  255, 64,  255);
-        case Priority::INFO:     return IM_COL32(255, 255, 255, 255);
-        case Priority::WARNING:  return IM_COL32(255, 237, 74,  255);
-        case Priority::ERROR:    return IM_COL32(255, 74,  74,  255);
+        case Priority::_SUCCESS:  return IM_COL32(70,  255, 64,  255);
+        case Priority::_INFO:     return IM_COL32(255, 255, 255, 255);
+        case Priority::_WARNING:  return IM_COL32(255, 237, 74,  255);
+        case Priority::_ERROR:    return IM_COL32(255, 74,  74,  255);
         default:                 return IM_COL32(255, 255, 255, 255);
         }
     }
@@ -48,7 +48,7 @@ public:
     DebugLogger(std::string name): WindowObject(name){}
 
 
-    void PushBack(Priority p, std::string msg) {
+    void PushBack(Priority p, const std::string& msg) {
 
         auto t = std::time(nullptr);
         auto tm = *std::localtime(&t);
@@ -83,6 +83,7 @@ public:
             while (clipper.Step()) {
                 for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
 
+                    
                     ImGui::PushID(i);
                     ImGui::BeginTable("##LogEntry", 2, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoSavedSettings);
 
@@ -100,6 +101,8 @@ public:
                             ImGui::Text(log[i].msg.c_str());
                             ImGui::PopStyleColor();
 
+                            ShowFullMessage(log[i]);
+
                     ImGui::EndTable();
                     ImGui::PopID();
 
@@ -114,6 +117,20 @@ public:
 
         }
         ImGui::End();
+    }
+
+private:
+
+    void ShowFullMessage(Data& data){
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort)){
+            ImGui::BeginTooltip();
+
+            ImGui::PushStyleColor(ImGuiCol_Text, GetPriorityColor(data.priority));
+            ImGui::Text(data.msg.c_str());
+            ImGui::PopStyleColor();
+
+            ImGui::EndTooltip();
+        }
     }
 
 

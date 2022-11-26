@@ -10,11 +10,13 @@
 #include "schematic_block.hpp"
 #include "block_editor.hpp"
 #include "librarian.hpp"
-
+#include "tcp_client.hpp"
 
 
 class App{
 public:
+
+    PLCclient plc_client;
     
     bool show_demo_window = false;
     bool show_project_tree_window = true;
@@ -115,6 +117,19 @@ public:
 
         if (show_save_project_dialog)
             SaveProjectAsDialog();
+
+
+        // get events from PLC client
+        {
+            std::queue<PLCclient::Event> events = plc_client.PullEvent();
+            while(!events.empty()){
+                PLCclient::Event e = events.front();
+                events.pop();
+                PLC_connection_log.PushBack(e.GetPriority(), e.ToStr());
+            }
+
+        }
+        
 
     }
 
@@ -272,9 +287,9 @@ private:
         catch (...) { path_str = "????????????"; }
 
         if(err == Schematic::Error::OK)
-            event_log.PushBack(DebugLogger::Priority::SUCCESS, "Saved project at: " + path_str );
+            event_log.PushBack(DebugLogger::Priority::_SUCCESS, "Saved project at: " + path_str );
         else
-            event_log.PushBack(DebugLogger::Priority::ERROR, std::string("Cannot save project: ") + Schematic::ErrorToStr(err) );    
+            event_log.PushBack(DebugLogger::Priority::_ERROR, std::string("Cannot save project: ") + Schematic::ErrorToStr(err) );    
             
 
         if(save_lib && !file_path.empty()){
@@ -296,10 +311,10 @@ private:
         Schematic::Error err = mainSchematic.Read(file_path);
 
         if (err == Schematic::Error::OK){
-            event_log.PushBack(DebugLogger::Priority::SUCCESS, "Project loaded succesfully");
+            event_log.PushBack(DebugLogger::Priority::_SUCCESS, "Project loaded succesfully");
         }
         else{
-            event_log.PushBack(DebugLogger::Priority::ERROR, Schematic::ErrorToStr(err));
+            event_log.PushBack(DebugLogger::Priority::_ERROR, Schematic::ErrorToStr(err));
             return;
         }
 
@@ -405,10 +420,10 @@ private:
                     //if(block_create_editor_after_creation)
                     //     block_editors.emplace_back(block_ptr); // open editor after creation 
 
-                    event_log.PushBack(DebugLogger::Priority::SUCCESS, "Created new block");
+                    event_log.PushBack(DebugLogger::Priority::_SUCCESS, "Created new block");
                 }else{
                     std::string msg = std::string("Cannot create new block: ") + BlockData::ErrorToStr(err);
-                    event_log.PushBack(DebugLogger::Priority::ERROR, msg);
+                    event_log.PushBack(DebugLogger::Priority::_ERROR, msg);
                 }
 
 
@@ -424,46 +439,47 @@ private:
 
 
 
-    struct PLC_IP {
-        //  ip1.ip2.ip3.ip4:port
-        char ip1[4];
-        char ip2[4];
-        char ip3[4];
-        char ip4[4];
-        char port[6];
-        PLC_IP() {
-            for (int i = 0; i < 4; i++) 
-                ip1[i] = ip2[i] = ip3[i] = ip4[i] = 0;
-            for (int i = 0; i < 6; i++) 
-                port[i] = 0;
-        }
-    }PLC_ip;
+    TCPclient::IPaddress plc_ip;
 
 
     void PLCConnectionDialog() {
         ImGui::Begin("PLC Connection", &show_PLC_connection_dialog);
 
-        
-        // IP Adress
-        auto dot = []() {ImGui::SameLine(); ImGui::Text("."); ImGui::SameLine(); };
+        ImGui::InputScalarN("IP Adress", ImGuiDataType_U8, plc_ip.addr, 4);
+        ImGui::InputScalar("Port", ImGuiDataType_U16, &plc_ip.port);
 
-        ImGui::PushItemWidth(ImGui::CalcTextSize("123").x * 2);
+        ImGui::Separator();
 
-        ImGui::InputText("##IP1", PLC_ip.ip1, sizeof(PLC_ip.ip1) / sizeof(PLC_ip.ip1[0]), ImGuiInputTextFlags_CharsDecimal); dot();
-        ImGui::InputText("##IP2", PLC_ip.ip2, sizeof(PLC_ip.ip2) / sizeof(PLC_ip.ip2[0]), ImGuiInputTextFlags_CharsDecimal); dot();
-        ImGui::InputText("##IP3", PLC_ip.ip3, sizeof(PLC_ip.ip3) / sizeof(PLC_ip.ip3[0]), ImGuiInputTextFlags_CharsDecimal); dot();
-        ImGui::InputText("##IP4", PLC_ip.ip4, sizeof(PLC_ip.ip4) / sizeof(PLC_ip.ip4[0]), ImGuiInputTextFlags_CharsDecimal);
-        
-        ImGui::SameLine();
-        ImGui::Text("IP Adress");
+        TCPclient::Status plc_client_status = plc_client.GetStatus();
 
-        ImGui::PopItemWidth();
+        { // Connection indicator
+            switch(plc_client_status){
+            case TCPclient::Status::CONNECTED:     
+                if(plc_client.IsResponding()) ImGui::TextColored(ImColor(0,255,0),   "Connected");    
+                else ImGui::TextColored(ImColor(255,255,0), "Connected - Not Responding");
+                break;
+            case TCPclient::Status::CONNECTING:    ImGui::TextColored(ImColor(255,255,0), "Connecting");   break;
+            case TCPclient::Status::DISCONNECTED:  ImGui::TextColored(ImColor(255,0,0),   "Disconnected"); break;
+            };
+        }
 
-        ImGui::InputText("Port", PLC_ip.port, sizeof(PLC_ip.port) / sizeof(PLC_ip.port[0]), ImGuiInputTextFlags_CharsDecimal);
+        ImGui::Separator();
 
-
-        
-
+        { // Connect/Disconnect buttons
+            ImVec2 button_size = ImVec2(ImGui::GetWindowWidth()/2, 0);
+            ImGui::BeginDisabled(plc_client_status != TCPclient::Status::DISCONNECTED);
+            if (ImGui::Button("Connect", button_size)){
+                plc_client.SetIp(plc_ip);
+                plc_client.Connect();
+            }
+            ImGui::EndDisabled();
+            ImGui::SameLine();
+            ImGui::BeginDisabled(plc_client_status != TCPclient::Status::CONNECTED);
+            if (ImGui::Button("Disconnect", button_size)){
+                plc_client.Disconnect();
+            }
+            ImGui::EndDisabled();
+        }
 
         ImGui::End();
     }
