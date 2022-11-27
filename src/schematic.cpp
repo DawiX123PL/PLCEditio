@@ -1,6 +1,6 @@
 #include "schematic.hpp"
 #include <boost/json.hpp>
-
+#include <boost/algorithm/string.hpp>
 #include <vector>
 
 
@@ -361,6 +361,333 @@ Schematic::Error Schematic::ParseJsonConnection(const boost::json::value& js, Co
 }
 
 
+
+bool Schematic::CodeExtractSection(const std::string& code, std::string* result, const std::string& marker){
+
+	std::string begin_marker = "\n//////****** begin " + marker + " ******//////\n";
+	std::string end_marker = "\n//////****** end " + marker + " ******//////\n";
+
+	size_t start = code.find(begin_marker);
+	size_t end = code.find(end_marker);
+	
+	if(start == std::string::npos) return false;
+	if(end == std::string::npos) return false;
+
+	size_t begin_pos = start + begin_marker.size();
+	size_t section_len = end - begin_pos;
+
+	if(section_len <= 0) return false;
+
+	*result = code.substr(begin_pos, section_len); 
+
+	return true;
+}
+
+
+std::string Schematic::BuildToCPP(){
+
+	std::list<std::string> blocks_cpp_classes;
+	std::list<std::shared_ptr<BlockData>> lib_blocks;
+
+	// step 1 - create list of unique library blocks 
+	{
+		// 1.1 - list all library blocks 
+		for(const auto& block: blocks) {
+			auto lib_block = block->lib_block.lock(); 
+
+			if(lib_block){
+				lib_blocks.push_back(lib_block);
+			}else{
+				//TODO: handle this error later;
+			}
+		}
+
+		// 1.2 - remove duplicates
+		lib_blocks.unique();
+	}
+
+
+	// step 2 - read and process blocks code
+	for(const auto& block_lib: lib_blocks){
+		
+		std::string full_name =  block_lib->FullName();
+		std::string code;
+
+		blocks_cpp_classes.push_back("");
+		
+		{// 2.1 - read code from file
+			BlockData::Error err = block_lib->ReadCode(&code);
+			if(err != BlockData::Error::OK) continue; //TODO: handle this error later;
+		}
+
+		{// 2.2 - process code and replace name with full_name;
+
+			std::string user_include;
+			std::string user_functions;
+			std::string user_init_func_body;
+			std::string user_update_func_body;
+
+			// extract code
+			CodeExtractSection(code, &user_include, "includes");
+			CodeExtractSection(code, &user_functions, "functions");
+			CodeExtractSection(code, &user_init_func_body, "init");
+			CodeExtractSection(code, &user_update_func_body, "update");
+
+			// replace '/' and '\' with '__'
+			std::string full_name_processed = full_name;
+			boost::replace_all(full_name_processed, "\\", "__");
+			boost::replace_all(full_name_processed, "/", "__");
+
+
+			// class prolog
+			std::string r_class_prolog;
+			{
+				r_class_prolog = 
+					"class " + full_name_processed + "_block{ \n"
+					"public: \n";
+				
+				auto inputs = block_lib->Inputs();
+				for(int i = 0; i < inputs.size(); i++){
+					r_class_prolog +=
+					"    " + inputs[i].type + "* input" + std::to_string(i) + ";\n";
+				}
+
+				auto parameters = block_lib->Parameters();
+				for(int i = 0; i < parameters.size(); i++){
+					r_class_prolog +=
+					"    " + parameters[i].type + "  parameter" + std::to_string(i) + ";\n";
+				}
+
+				auto outputs = block_lib->Outputs();
+				for(int i = 0; i < outputs.size(); i++){
+					r_class_prolog +=
+					"    " + outputs[i].type + "  output" + std::to_string(i) + ";\n";
+				}
+			}
+
+			// init function prolog
+			std::string r_init_func_prolog = 
+					"\n" 
+					"    void init(){\n";
+
+			// update function prolog
+			std::string r_update_func_prolog = 
+					"\n"
+					"    }\n"
+					"\n"        
+					"    void update(){\n";
+			
+			// class epilogue
+			std::string r_class_epilog = 
+						"\n"
+						"    }\n"
+						"};\n";
+
+
+			std::string processed_code = 
+			 		  user_include
+					+ r_class_prolog
+					+ user_functions
+					+ r_init_func_prolog
+					+ user_init_func_body
+					+ r_update_func_prolog
+					+ user_update_func_body
+					+ r_class_epilog;
+
+			blocks_cpp_classes.back() = processed_code;
+		}
+	}
+
+
+	std::list<std::string> blocks_cpp_objects;
+	std::list<std::string> blocks_cpp_init;
+	std::list<std::string> blocks_cpp_update;
+
+	// step 3 - create all objects representing blocks + init/update functions
+	for(const auto& block: blocks){
+
+		std::string class_name = block->GetFullName() + "_block";
+		// replace '/' and '\' with '__'
+		boost::replace_all(class_name, "\\", "__");
+		boost::replace_all(class_name, "/", "__");
+
+		std::string object_name = "block_" + std::to_string(block->id);
+
+		std::string object = "    " + class_name + " " + object_name + ";";
+		std::string init_call = "    " + object_name + ".init();";
+		std::string update_call = "    " + object_name + ".update();";
+
+		blocks_cpp_objects.push_back(object);
+		blocks_cpp_init.push_back(init_call);
+		blocks_cpp_update.push_back(update_call);
+	}
+
+	std::list<std::string> connections_cpp;
+	// step 4 - create connections between blocks;
+	for(const auto& conn: connetions){
+		auto src = conn.src.lock();
+		auto dst = conn.dst.lock();
+
+		if(!dst || !src) continue; // TODO: handle this error later;
+
+		std::string src_name = "block_" + std::to_string(src->id);
+		std::string dst_name = "block_" + std::to_string(dst->id);
+		std::string src_output_name = "output" + std::to_string(conn.src_pin);
+		std::string dst_input_name = "input" + std::to_string(conn.dst_pin);
+
+		std::string conn_code = dst_name + " = &" + src_name + ";";
+
+		connections_cpp.push_back(conn_code);
+	}
+
+	std::list<std::string> parameters_cpp;
+	// step 5 - setup parameters
+	for(const auto& block: blocks){
+
+
+		auto lib_block = block->lib_block.lock();
+		if(!lib_block) continue;
+
+		auto params = block->parameters;
+		auto lib_params =lib_block->Parameters();
+
+
+		std::string object_name = "block_" + std::to_string(block->id);
+		
+		for(int i = 0; i < lib_params.size(); i++){
+
+			std::string param_str;
+
+			// check for bool value 
+			if(lib_params[i].type == "bool"){
+				if(i < params.size()){
+					if(std::holds_alternative<bool>(params[i])){
+						std::string val = std::get<bool>(params[i]) ? "true" : "false";
+						param_str = "    " + object_name + ".parameter" + std::to_string(i) + " = " + val + ";";
+					}else{
+						param_str = "    " + object_name + ".parameter" + std::to_string(i) + " = false; // variant error";
+					}
+				}else{
+					param_str = "    " + object_name + ".parameter" + std::to_string(i) + " = false; // default";
+				}
+			}
+
+			// check for double value 
+			else if(lib_params[i].type == "double"){
+				if(i < params.size()){
+					if(std::holds_alternative<double>(params[i])){
+						std::string val = std::to_string(std::get<double>(params[i]));
+						param_str = "    " + object_name + ".parameter" + std::to_string(i) + " = " + val + ";";
+					}else{
+						param_str = "    " + object_name + ".parameter" + std::to_string(i) + " = 0.0; // variant error";
+					}
+				}else{
+					param_str = "    " + object_name + ".parameter" + std::to_string(i) + " = 0.0; // default";
+				}
+			}
+
+			// check for int64_t value 
+			else if(lib_params[i].type == "int64_t"){
+				if(i < params.size()){
+					if(std::holds_alternative<int64_t>(params[i])){
+						std::string val = std::to_string(std::get<int64_t>(params[i]));
+						param_str = "    " + object_name + ".parameter" + std::to_string(i) + " = " + val + ";";
+					}else{
+						param_str = "    " + object_name + ".parameter" + std::to_string(i) + " = 0; // variant error";
+					}
+				}else{
+					param_str = "    " + object_name + ".parameter" + std::to_string(i) + " = 0; // default";
+				}
+			}
+
+			// check for std::string value 
+			else if(lib_params[i].type == "std::string"){
+				if(i < params.size()){
+					if(std::holds_alternative<std::string>(params[i])){
+						std::string val = std::get<std::string>(params[i]);
+						param_str = "    " + object_name + ".parameter" + std::to_string(i) + " = " + val + ";";
+					}else{
+						param_str = "    " + object_name + ".parameter" + std::to_string(i) + " = 0; // variant error";
+					}
+				}else{
+					param_str = "    " + object_name + ".parameter" + std::to_string(i) + " = 0; // default";
+				}
+			}
+
+			parameters_cpp.push_back(param_str);
+		}
+
+
+	}
+
+
+	// step 6 - merge all code
+
+	std::string code = 
+	"#include <string>\n"
+	"#include <inttypes.h>\n"
+	"\n\n"
+	"// 	block classes"
+	"\n\n";
+
+	for(std::string& _class: blocks_cpp_classes)
+		code += _class + "\n"; 
+	
+
+	code += 
+	"\n\n"
+	"int main(){\n"
+	"\n\n"
+	"// 	block instances\n"
+	"\n\n";
+
+	for(std::string& object: blocks_cpp_objects)
+		code += "    " + object + "\n";
+
+	code += 
+	"\n\n"
+	"// 	connections\n"
+	"\n\n";
+
+	for(std::string& conn: connections_cpp)
+		code += "    " + conn + "\n";
+
+	code += 
+	"\n\n"
+	"// 	parameters\n"
+	"\n\n";
+
+	for(std::string& params: parameters_cpp)
+		code += "    " + params + "\n";
+
+	code += 
+	"\n\n"
+	"// 	Init blocks\n"
+	"\n\n";
+
+	for(std::string& inits: blocks_cpp_init)
+		code += "    " + inits + "\n";
+
+	code += 
+	"\n\n"
+	"    while(true){\n\n"
+	"// 	Update blocks\n"
+	"\n\n";
+
+	for(std::string& inits: blocks_cpp_update)
+		code += "    " + inits + "\n";
+
+
+	code += 
+	"\n\n"
+	"    }\n"
+	"}\n"
+	"\n\n";
+
+
+	return code;
+
+}
 
 
 

@@ -129,6 +129,17 @@ public:
             }
 
         }
+
+
+        // test builder 
+        // TODO: REPLACE THIS WITH PROPER BUILD WINDOW
+        ImGui::Begin("BUILD");
+
+        if(ImGui::Button("build")){
+            mainSchematic.BuildToCPP();
+        }
+
+        ImGui::End();
         
 
     }

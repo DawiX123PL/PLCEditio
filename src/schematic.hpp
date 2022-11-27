@@ -275,12 +275,15 @@ public:
 	}
 
 
-
+	std::string BuildToCPP();
 
 
 	Error Read(const std::filesystem::path& _path);
 
 private:
+
+	bool CodeExtractSection(const std::string& code, std::string* result, const std::string& marker);
+
     Error SaveFile(const std::filesystem::path& _path, const std::string& data);
     Error LoadFile(const std::filesystem::path& path, std::string* result);
 
