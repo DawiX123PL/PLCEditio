@@ -34,14 +34,12 @@ private:
     std::string title;
     std::filesystem::path path;
     std::string name;       
-    std::string name_prefix;  // full_name is related to block path 
-                            // full_name = path - library_root - extensions;
+    std::string name_prefix;  // full_name is NOT related to block path 
+                            // full_name = name_prefix + name;
                             // eg.: 
-                            //    
-                            //    library_root = "C:\Users\TestUser\Desktop\project"
-                            //    path         = "C:\Users\TestUser\Desktop\project\LocalBlocks\test.block"
                             //    name         = "test"
-                            //    full_name    = "LocalBlocks\test"
+                            //    name_prefix  = "local\example"
+                            //    full_name    = "local\example\test"
 
 
 
@@ -143,7 +141,30 @@ public:
         }
     }
 
+private:
 
+    void GetPinProperties(const IO& io, ImNodesPinShape* shape, ImColor* color ){
+
+        if(io.type == "bool"){                      // bool - blue circle
+            *color = ImColor(0, 69, 242);
+            *shape = ImNodesPinShape_Circle;
+        }else if(io.type == "int64_t"){             // int64_t - green/blue circle
+            *color = ImColor(0, 255, 89);
+            *shape = ImNodesPinShape_Circle;
+        }else if(io.type == "double"){              // double - yellow circle
+            *color = ImColor(166, 255, 0);
+            *shape = ImNodesPinShape_Circle;
+        }else if(io.type == "std::string"){         // std::string - purple circle
+            *color = ImColor(222, 0, 242);        
+            *shape = ImNodesPinShape_Circle;
+        }else{
+            *color = ImColor(150,150,150);          // other - grey triangle
+            *shape = ImNodesPinShape_Triangle;
+        }
+    }
+
+
+public:
 
     int Render(int id, std::vector<std::variant<std::monostate, bool, int64_t, double, std::string>>& param_memory){
 
@@ -163,9 +184,17 @@ public:
         // Inputs
         ImGui::BeginGroup();
             for(auto& i: inputs){
-                ImNodes::BeginInputAttribute(input_id++, ImNodesPinShape_Circle);
+                
+                ImColor color;
+                ImNodesPinShape shape;
+                GetPinProperties(i, &shape, &color);
+                ImNodes::PushColorStyle(ImNodesCol_Pin, color);
+                
+                ImNodes::BeginInputAttribute(input_id++, shape);
                 ImGui::Text(i.label.c_str());
                 ImNodes::EndInputAttribute();
+
+                ImNodes::PopColorStyle();
             }
         ImGui::EndGroup();
 
@@ -235,9 +264,17 @@ public:
         // Outputs
         ImGui::BeginGroup();
             for(auto& o: outputs){
-                ImNodes::BeginOutputAttribute(output_id++, ImNodesPinShape_Circle);
+
+                ImColor color;
+                ImNodesPinShape shape;
+                GetPinProperties(o, &shape, &color);
+                ImNodes::PushColorStyle(ImNodesCol_Pin, color);
+
+                ImNodes::BeginOutputAttribute(output_id++, shape);
                 ImGui::Text(o.label.c_str());
                 ImNodes::EndOutputAttribute();
+
+                ImNodes::PopColorStyle();
             }
         ImGui::EndGroup();
 

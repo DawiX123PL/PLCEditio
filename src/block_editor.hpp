@@ -1,5 +1,6 @@
 #include <memory>
 #include <vector>
+#include <functional>
 #include <imgui.h>
 #include <imnodes.h>
 #include <misc/cpp/imgui_stdlib.h>
@@ -96,6 +97,8 @@ class BlockEditor: public WindowObject{
 
     bool is_std_block;
 
+    std::function<void()> on_save_callback;
+
 // code editor variables
     std::string code_editor_name;
     bool show_code_editor = false;
@@ -136,6 +139,7 @@ public:
         code_editor_name("block: " + _block->FullName() + "##BLOCK_EDITOR_CODE"),
         block(_block)
     {
+        on_save_callback = nullptr;
         show = true;
         center_on_start = true;
         block_id = 0;
@@ -170,6 +174,7 @@ public:
         ImNodes::DestroyContext(context);
     }
 
+private:
 
     void BlockIOsToInternal(BlockData b){
         std::vector<BlockData::IO> b_inputs = b.Inputs();
@@ -199,7 +204,7 @@ public:
         b->SetOutputs(b_outputs);
     }
 
-
+public:
 
     bool IsNoSaved(){return no_saved;}
 
@@ -210,6 +215,11 @@ public:
         }catch(...){
             return false;
         }
+    }
+
+
+    void SetOnSaveCallback( std::function<void()> func ){
+        on_save_callback = func;
     }
 
 
@@ -467,7 +477,10 @@ private:
             block_ptr->SaveCode(code);
 
             no_saved = false;
-        } 
+        }
+        if(on_save_callback){
+            on_save_callback();
+        }
     }
 
     void RenderCodeEditor(){

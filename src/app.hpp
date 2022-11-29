@@ -423,14 +423,6 @@ private:
                     library1.AddBlock(block);
                     mainSchematic.LinkWithLibrary(&library1);
 
-                    // auto block_ptr = std::make_shared<BlockData>(block);
-                    // block_ptr->SetDemoBlockData();
-
-                    // library.push_back(block_ptr);
-
-                    //if(block_create_editor_after_creation)
-                    //     block_editors.emplace_back(block_ptr); // open editor after creation 
-
                     event_log.PushBack(DebugLogger::Priority::_SUCCESS, "Created new block");
                 }else{
                     std::string msg = std::string("Cannot create new block: ") + BlockData::ErrorToStr(err);
@@ -523,29 +515,6 @@ private:
 
                     ShowProjectTreeBlockLib(library1.GetLib());
                     
-                    
-                    // for (const auto& block : library) {
-
-                    //     std::string name = block->Name() + "##block";
-                    //     ImGui::TreeNodeEx(name.c_str(), ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
-                    //     // open editor window
-                    //     if(ImGui::IsItemClicked()){
-
-                    //         // check if editor is opened
-                    //         bool isOpen = false;
-                    //         for (auto& ed : block_editors) {
-                    //             if (ed.IsSameBlockAs(block)) {
-                    //                 isOpen = true;
-                    //                 ed.Show(true);
-                    //                 break;
-                    //             }
-                    //         }
-                    //         // open new editor if needed
-                    //         if(!isOpen)
-                    //             block_editors.emplace_back(block);
-                    //     }
-
-                    // }
                     ImGui::TreePop();
                 }
                 ImGui::TreePop();
@@ -579,6 +548,12 @@ private:
                 // open new editor if needed
                 if (!isOpen)
                     block_editors.emplace_back(block);
+                    block_editors.back().SetOnSaveCallback(
+                        [this]()
+                        {
+                            mainSchematic.RemoveInvalidElements();
+                        }
+                        );
             }
         }
     }

@@ -60,6 +60,28 @@ public:
         ImNodes::SetCurrentContext(nullptr);
     }
 
+private:
+
+
+
+
+    void GetConnectionColor(const BlockData::IO& io, ImColor* color ){
+
+        if(io.type == "bool"){                      // bool - blue
+            *color = ImColor(0, 69, 242);
+        }else if(io.type == "int64_t"){             // int64_t - green/blue
+            *color = ImColor(0, 255, 89);
+        }else if(io.type == "double"){              // double - yellow
+            *color = ImColor(166, 255, 0);
+        }else if(io.type == "std::string"){         // std::string - purple
+            *color = ImColor(222, 0, 242);        
+        }else{
+            *color = ImColor(150,150,150);          // other - grey
+        }
+    }
+
+
+public:
 
 
 
@@ -91,22 +113,7 @@ public:
                 const ImVec2 click_pos = ImGui::GetMousePosOnOpeningCurrentPopup();
                 
                 if(ImGui::BeginMenu("Add")){
-                    
-                    RenderAddPopup(library->GetLib(), click_pos);
-
-                    // if (library) {
-                    //     for (auto block : *library) {
-
-                    //         if (ImGui::MenuItem(block->Name().c_str())) {
-                    //             // TODO:
-                    //             // ADD BLOCK to schematic there                      
-
-                    //             auto b = schematic->CreateBlock(block, 0, 0);
-                    //             ImNodes::SetNodeScreenSpacePos(BlockData::GetImnodeID(b->id), click_pos);
-                    //         }
-                    //     }
-                    // }
-                 
+                    RenderAddPopup(library->GetLib(), click_pos);                 
                     ImGui::EndMenu();
                 }
 
@@ -145,11 +152,24 @@ public:
                     auto src = conn.src.lock();
                     auto dst = conn.dst.lock();
 
+                    auto src_lib = src->lib_block.lock();
+
                     if(!src || !dst) continue;
                     int src_pin_imnodes = BlockData::GetImnodeOutputID(src->id, conn.src_pin);
                     int dst_pin_imnodes = BlockData::GetImnodeInputID(dst->id, conn.dst_pin);
                     
+                    ImColor color;
+
+                    if(src_lib){
+                        const BlockData::IO& io = src_lib->Outputs()[conn.src_pin];
+                        GetConnectionColor(io, &color );
+                    }else{
+                        color = ImColor(100,100,100);
+                    }
+
+                    ImNodes::PushColorStyle(ImNodesCol_Link, color);
                     ImNodes::Link(conn.id, src_pin_imnodes, dst_pin_imnodes);
+                    ImNodes::PopColorStyle();
                 }
             }
 

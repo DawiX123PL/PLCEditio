@@ -53,12 +53,6 @@ class Schematic {
 		Connection(int _id, std::weak_ptr<Block> _src, int _src_pin, std::weak_ptr<Block> _dst, int _dst_pin)
 			:id(_id), src(_src), src_pin(_src_pin), dst(_dst), dst_pin(_dst_pin){}
 
-		// returns true if connection is valid
-		bool verify() {
-			if (src.expired()) return false;
-			if (dst.expired()) return false;
-			return true;
-		}
 
 		bool IsValid(){
 			// test if pin ids are valid number
@@ -72,8 +66,8 @@ class Schematic {
 			auto src_ptr = src.lock();
 			auto dst_ptr = dst.lock();
 
-			if (src_ptr) return false; // this migth be redundant
-			if (dst_ptr) return false; // this migth be redundant
+			if (!src_ptr) return false; // this migth be redundant
+			if (!dst_ptr) return false; // this migth be redundant
 
 			// test if source and dest blocks are valid
 			if(!src_ptr->IsValid()) return false;
@@ -86,7 +80,10 @@ class Schematic {
 			if(src_data_ptr->Outputs().size() < src_pin) return false;
 			if(dst_data_ptr->Inputs().size() < dst_pin) return false;
 
-			return true;
+			// test if src and dst have same data type
+			if(src_data_ptr->Outputs()[src_pin].type != dst_data_ptr->Inputs()[dst_pin].type) return false;
+			
+			return true; // return true if passed every test
 		}
 	};
 
@@ -167,6 +164,47 @@ public:
 
 	};
 
+
+private:
+
+	bool IsConnectedToAlreadyConnectedPin(const Connection* conn1){
+		if(!conn1) return true;
+
+		auto dst1 = conn1->dst.lock();
+		if(!dst1) return false; // not connected to anything
+
+		for(auto iter = connetions.begin(); iter != connetions.end(); /*none*/){
+			const Connection* conn2 = &(*iter);
+
+			if(conn2 == conn1){
+				iter ++;
+				continue; // skip same connection
+			} 
+
+
+			auto dst2 = conn2->dst.lock();
+
+			if(dst1 != dst2){
+				iter++;
+				continue; // not connected to same block
+			}
+
+			if(conn1->dst_pin != conn2->dst_pin){
+				iter++;
+				continue; // not connected to same pin
+			} 
+
+			return true; // connected to same block and pin
+		}
+
+		return false;
+
+	}
+
+
+public:
+
+
 	bool CreateConnection(int src_id, int src_pin, int dst_id, int dst_pin){
 
 		// find src and dst block;
@@ -179,7 +217,7 @@ public:
 		};
 		
 		Connection conn(next_connection_id++, src, src_pin, dst, dst_pin);
-		if (conn.verify()) {
+		if (conn.IsValid() && !IsConnectedToAlreadyConnectedPin(&conn)) {
 			connetions.push_back(conn);
 			return true;
 		}
@@ -225,12 +263,15 @@ public:
 			block_ptr->lib_block = block_data;
 		}
 
+		RemoveInvalidElements();
+
 	}
 
 
 
 	void RemoveInvalidElements(){
 
+		// remove invalid blocks
 		blocks.remove_if(
 			[](std::shared_ptr<Block>& block)
 			{
@@ -240,12 +281,24 @@ public:
 			} 
 			);
 
+		// remove invalid connections
 		connetions.remove_if(
 			[](Connection& conn)
 			{
-				return conn.IsValid();
+				return !conn.IsValid();
 			}
 		);
+
+		// remove multiple connections connected to single input
+		for(auto iter = connetions.begin(); iter != connetions.end(); /*none*/){
+			Connection& conn = *iter;
+			if(IsConnectedToAlreadyConnectedPin(&conn)){
+				iter = connetions.erase(iter);
+			}else{
+				iter++;
+			}
+
+		}
 
 	}
 
