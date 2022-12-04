@@ -513,9 +513,9 @@ std::string Schematic::BuildToCPP(){
 
 		std::string object_name = "block_" + std::to_string(block->id);
 
-		std::string object = "    " + class_name + " " + object_name + ";";
-		std::string init_call = "    " + object_name + ".init();";
-		std::string update_call = "    " + object_name + ".update();";
+		std::string object = class_name + " " + object_name + ";";
+		std::string init_call =  object_name + ".init();";
+		std::string update_call = object_name + ".update();";
 
 		blocks_cpp_objects.push_back(object);
 		blocks_cpp_init.push_back(init_call);
@@ -535,7 +535,7 @@ std::string Schematic::BuildToCPP(){
 		std::string src_output_name = "output" + std::to_string(conn.src_pin);
 		std::string dst_input_name = "input" + std::to_string(conn.dst_pin);
 
-		std::string conn_code = dst_name + " = &" + src_name + ";";
+		std::string conn_code = dst_name + "." + dst_input_name + " = &" + src_name + "." + src_output_name + ";";
 
 		connections_cpp.push_back(conn_code);
 	}
@@ -563,12 +563,12 @@ std::string Schematic::BuildToCPP(){
 				if(i < params.size()){
 					if(std::holds_alternative<bool>(params[i])){
 						std::string val = std::get<bool>(params[i]) ? "true" : "false";
-						param_str = "    " + object_name + ".parameter" + std::to_string(i) + " = " + val + ";";
+						param_str = object_name + ".parameter" + std::to_string(i) + " = " + val + ";";
 					}else{
-						param_str = "    " + object_name + ".parameter" + std::to_string(i) + " = false; // variant error";
+						param_str = object_name + ".parameter" + std::to_string(i) + " = false; // variant error";
 					}
 				}else{
-					param_str = "    " + object_name + ".parameter" + std::to_string(i) + " = false; // default";
+					param_str = object_name + ".parameter" + std::to_string(i) + " = false; // default";
 				}
 			}
 
@@ -577,12 +577,12 @@ std::string Schematic::BuildToCPP(){
 				if(i < params.size()){
 					if(std::holds_alternative<double>(params[i])){
 						std::string val = std::to_string(std::get<double>(params[i]));
-						param_str = "    " + object_name + ".parameter" + std::to_string(i) + " = " + val + ";";
+						param_str =  object_name + ".parameter" + std::to_string(i) + " = " + val + ";";
 					}else{
-						param_str = "    " + object_name + ".parameter" + std::to_string(i) + " = 0.0; // variant error";
+						param_str =  object_name + ".parameter" + std::to_string(i) + " = 0.0; // variant error";
 					}
 				}else{
-					param_str = "    " + object_name + ".parameter" + std::to_string(i) + " = 0.0; // default";
+					param_str =  object_name + ".parameter" + std::to_string(i) + " = 0.0; // default";
 				}
 			}
 
@@ -591,12 +591,12 @@ std::string Schematic::BuildToCPP(){
 				if(i < params.size()){
 					if(std::holds_alternative<int64_t>(params[i])){
 						std::string val = std::to_string(std::get<int64_t>(params[i]));
-						param_str = "    " + object_name + ".parameter" + std::to_string(i) + " = " + val + ";";
+						param_str = object_name + ".parameter" + std::to_string(i) + " = " + val + ";";
 					}else{
-						param_str = "    " + object_name + ".parameter" + std::to_string(i) + " = 0; // variant error";
+						param_str = object_name + ".parameter" + std::to_string(i) + " = 0; // variant error";
 					}
 				}else{
-					param_str = "    " + object_name + ".parameter" + std::to_string(i) + " = 0; // default";
+					param_str = object_name + ".parameter" + std::to_string(i) + " = 0; // default";
 				}
 			}
 
@@ -605,12 +605,12 @@ std::string Schematic::BuildToCPP(){
 				if(i < params.size()){
 					if(std::holds_alternative<std::string>(params[i])){
 						std::string val = std::get<std::string>(params[i]);
-						param_str = "    " + object_name + ".parameter" + std::to_string(i) + " = " + val + ";";
+						param_str = object_name + ".parameter" + std::to_string(i) + " = " + val + ";";
 					}else{
-						param_str = "    " + object_name + ".parameter" + std::to_string(i) + " = 0; // variant error";
+						param_str = object_name + ".parameter" + std::to_string(i) + " = 0; // variant error";
 					}
 				}else{
-					param_str = "    " + object_name + ".parameter" + std::to_string(i) + " = 0; // default";
+					param_str = object_name + ".parameter" + std::to_string(i) + " = 0; // default";
 				}
 			}
 
@@ -675,7 +675,7 @@ std::string Schematic::BuildToCPP(){
 	"\n\n";
 
 	for(std::string& inits: blocks_cpp_update)
-		code += "    " + inits + "\n";
+		code += "        " + inits + "\n";
 
 
 	code += 
