@@ -28,7 +28,7 @@ public:
     bool show_create_block_dialog = false;
 
     DebugLogger PLC_connection_log;
-
+    DebugLogger PLC_message_log;
     DebugLogger event_log;
     
     Schematic mainSchematic;
@@ -47,7 +47,8 @@ public:
     App(int _argc, char** _argv) :
         argc(_argc),
         argv(_argv),
-        PLC_connection_log("PLC Message Log"),
+        PLC_connection_log("PLC Connection Log"),
+        PLC_message_log("PLC Message Log"),
         event_log("Event Log"),
         schematic_editor("Schematic Editor")
     {
@@ -80,6 +81,7 @@ public:
         ShowMainMenu();
 
         PLC_connection_log.Render();
+        PLC_message_log.Render();
         event_log.Render();
         schematic_editor.Render();
 
@@ -127,6 +129,23 @@ public:
                 events.pop();
                 PLC_connection_log.PushBack(e.GetPriority(), e.ToStr());
             }
+        }
+
+        { // get all messages received and sent
+            std::queue<std::string> rx_messages = plc_client.GetRxMessages();
+            std::queue<std::string> tx_messages = plc_client.GetTxMessages();
+
+            while(!rx_messages.empty()){
+                std::string& msg = rx_messages.front();
+                PLC_message_log.PushBack(DebugLogger::Priority::_WARNING, "RX: " + msg);
+                rx_messages.pop();
+            }
+
+            while(!tx_messages.empty()){
+                std::string& msg = tx_messages.front();
+                PLC_message_log.PushBack(DebugLogger::Priority::_INFO, "TX: " + msg);
+                tx_messages.pop();
+            }
 
         }
 
@@ -141,6 +160,7 @@ public:
 
         ImGui::End();
         
+
 
     }
 
@@ -166,7 +186,8 @@ private:
 
         if (ImGui::BeginMenu("PLC")) {
             if (ImGui::MenuItem("Connection", nullptr, show_PLC_connection_dialog)) show_PLC_connection_dialog = !show_PLC_connection_dialog;
-            if (ImGui::MenuItem("Message Log", nullptr, PLC_connection_log.IsShown())) PLC_connection_log.Show(!PLC_connection_log.IsShown());
+            if (ImGui::MenuItem("Connection Log", nullptr, PLC_connection_log.IsShown())) PLC_connection_log.Show(!PLC_connection_log.IsShown());
+            if (ImGui::MenuItem("Message Log", nullptr, PLC_message_log.IsShown())) PLC_message_log.Show(!PLC_message_log.IsShown());
             ImGui::EndMenu();
         }
 
@@ -483,6 +504,43 @@ private:
             }
             ImGui::EndDisabled();
         }
+
+        ImGui::Separator();
+
+        { // upload and compile button
+            ImGui::BeginDisabled(plc_client_status != TCPclient::Status::CONNECTED);
+
+            PLCclient::FileWriteResponse response;
+            if(plc_client.GetIfFileWriteResponse(&response)){
+                ImGui::TextColored(ImColor(255, 255, 0), "Saved File");
+            }
+
+
+            ImVec2 button_size = ImVec2(ImGui::GetWindowWidth(), 0);
+            if (ImGui::Button("Upload and Compile", button_size)){
+                std::string code = mainSchematic.BuildToCPP();
+                plc_client.FileWriteStr(code, "file1.cpp");
+            }
+
+            ImGui::EndDisabled();
+        }
+
+        ImGui::Separator();
+
+        { // Run/Stop Buttons
+
+            ImVec2 button_size = ImVec2(ImGui::GetWindowWidth()/2, 0);
+            if (ImGui::Button("Run", button_size)){
+                
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Stop", button_size)){
+                
+            }
+
+        }
+
+
 
         ImGui::End();
     }

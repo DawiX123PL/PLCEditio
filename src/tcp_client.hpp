@@ -8,6 +8,7 @@
 #include <queue>
 #include <boost/json.hpp>
 #include <chrono>
+#include <functional>
 #include "debug_console.hpp"
 
 
@@ -59,7 +60,7 @@ public:
 
 
 private:
-    std::recursive_mutex mutex;
+    std::recursive_mutex tcp_mutex;
     boost::asio::io_context io_context;
     boost::asio::ip::tcp::socket socket;
     boost::asio::ip::tcp::endpoint endpoint;
@@ -90,10 +91,8 @@ public:
 
 
     Status GetStatus(){
-        mutex.lock();
-        Status s = status;
-        mutex.unlock();
-        return s;
+        std::scoped_lock lock(tcp_mutex);
+        return status;
     }
 
     bool IsConnected(){
@@ -110,23 +109,22 @@ public:
 
 
     bool SetIp( IPaddress ip ){
-        mutex.lock();
+        std::scoped_lock lock(tcp_mutex);
+
         bool result;
         if(status == Status::DISCONNECTED){
             boost::asio::ip::address_v4::bytes_type addr = { ip.addr[0], ip.addr[1], ip.addr[2], ip.addr[3] };          
             endpoint.address(boost::asio::ip::make_address_v4(addr));
             endpoint.port(ip.port);
-            result = true;
+            return true;
         }else{
-            result = false;
+            return false;
         }
-        mutex.unlock();
-        return result;
     }
 
 
     void Connect(){
-        mutex.lock();
+        std::scoped_lock lock(tcp_mutex);
 
         if(status != Status::DISCONNECTED){
             socket.close();
@@ -151,12 +149,11 @@ public:
             } 
             );
 
-        mutex.unlock();
     }
 
 
     bool Disconnect(){
-        mutex.lock();     
+        std::scoped_lock lock(tcp_mutex);
         
         boost::system::error_code err;
         socket.close();
@@ -164,7 +161,6 @@ public:
             onDisconnected(err);
         status = Status::DISCONNECTED;
 
-        mutex.unlock();
         if(err) return false;
         else return true;
     }
@@ -174,6 +170,8 @@ protected:
 
 
     void Read(){
+
+        std::scoped_lock lock(tcp_mutex);
 
         socket.async_receive(
             boost::asio::buffer(read_buffer, read_buffer_size), 
@@ -197,6 +195,8 @@ protected:
 
 
     void Write(const uint8_t* const data, size_t len){
+
+        std::scoped_lock lock(tcp_mutex);
 
         // copy data to memory
 		// shared pointer is necessary because data must be valid until handler is called
@@ -238,7 +238,7 @@ protected:
 	// this function is called when data is succesfuly(or not) sent to client
 	virtual void onWrite(const boost::system::error_code& error, std::size_t bytes_transferred) = 0;
 
-    virtual void loop() = 0;
+    virtual void onLoop() = 0;
 
 
     void threadJob() override{
@@ -251,8 +251,8 @@ protected:
                 auto now = std::chrono::high_resolution_clock::now();
 
                 {
-                    std::scoped_lock lock(mutex);
-                    loop();
+                    std::scoped_lock lock(tcp_mutex);
+                    onLoop();
                     io_context.run_until(now + step);
                 }
 
@@ -339,6 +339,28 @@ public:
         return events;
     }
 
+
+    std::queue<std::string> GetTxMessages(){
+        std::queue<std::string> messages;
+        
+        RX_TX_messages_mutex.lock();
+        TX_messages.swap(messages);
+        RX_TX_messages_mutex.unlock();
+
+        return messages;
+    }
+
+    std::queue<std::string> GetRxMessages(){
+        std::queue<std::string> messages;
+
+        RX_TX_messages_mutex.lock();
+        RX_messages.swap(messages);;
+        RX_TX_messages_mutex.unlock();
+
+        return messages;
+    }
+
+
     bool IsResponding(){
         event_queue_mutex.lock();
         bool is_resp = is_responding;
@@ -353,6 +375,11 @@ private:
     std::mutex event_queue_mutex;
     std::queue<Event> event_queue;
 
+    std::mutex RX_TX_messages_mutex;
+    std::queue<std::string> RX_messages;
+    std::queue<std::string> TX_messages;
+
+
     static constexpr auto response_check_delay = std::chrono::milliseconds(1000);
     std::chrono::steady_clock::time_point last_received_time;
     bool is_responding = false;
@@ -360,6 +387,34 @@ private:
 
     boost::json::stream_parser json_parser;
 
+public:
+    struct FileWriteResponse{
+        enum class Status{_OK, _ERR} status;
+        std::string msg;
+    };
+
+
+private:
+    std::mutex response_mutex;
+    bool filewrite_response_received = false;
+    FileWriteResponse filewrite_response;
+
+
+public:
+
+
+    bool GetIfFileWriteResponse(FileWriteResponse* response){
+        std::scoped_lock(response_mutex);
+
+        if(filewrite_response_received){
+            *response = filewrite_response;
+        }
+        return filewrite_response_received;
+    }
+
+
+private:
+    
 
 	void parseJsonStream( const char * const data, size_t len) {
 		boost::json::value json;
@@ -418,17 +473,63 @@ private:
         parseJsonStream((const char * const)data, bytes_received);
     }
 
+    void onReadCommand(std::error_code err){
+
+    }
 
     void onReadCommand(const boost::json::value& js){
         last_received_time = std::chrono::high_resolution_clock::now();
 
-        std::cout << "Received :: " << js << "\n";
+        // std::cout << "Received :: " << js << "\n";
+        if(auto obj_js = js.if_object()){
+            
+            if(auto cmd_js = obj_js->if_contains("Cmd")){
+
+                if(auto cmd_str_js = cmd_js->if_string()){
+
+                    std::string cmd = cmd_str_js->c_str();
+                    
+                    if(cmd == "PING") onReadCommandResponsePing();
+                    else if(cmd == "FILE_WRITE") onReadCommandResponseFileWrite(*obj_js);
+                
+                }
+            }
+        }
+
+        
+
+        RX_TX_messages_mutex.lock();
+        RX_messages.emplace(boost::json::serialize(js));
+        RX_TX_messages_mutex.unlock();
     }
 
-
-    void onReadCommand(std::error_code err){
+    void onReadCommandResponsePing(){
 
     }
+
+    void onReadCommandResponseFileWrite(const boost::json::object& js){
+        FileWriteResponse response;
+
+        if(auto result_js = js.if_contains("Result")){
+            if(auto result_str = result_js->if_string()){
+                if(*result_str == "OK") response.status = FileWriteResponse::Status::_OK;
+                else response.status = FileWriteResponse::Status::_ERR;
+            }
+        }
+
+        if(auto msg_js = js.if_contains("Msg")){
+            if(auto msg_str = msg_js->if_string()){
+                response.msg = msg_str->c_str();
+            }
+        }
+
+        {
+            std::scoped_lock lock(response_mutex);
+            filewrite_response_received = true;
+            filewrite_response = response;
+        }
+    }
+
 
 
 
@@ -440,7 +541,7 @@ private:
 
     int i=0;
 
-    virtual void loop() {
+    virtual void onLoop() {
         if(!IsConnected()) return;
 
         is_responding = std::chrono::high_resolution_clock::now() < (response_check_delay + last_received_time);
@@ -452,6 +553,16 @@ private:
         }
     }
 
+    void WriteAndLog(const std::string& msg_str){
+        Write((const uint8_t *) msg_str.c_str(), msg_str.size());
+        RX_TX_messages_mutex.lock();
+        TX_messages.emplace(msg_str);
+        RX_TX_messages_mutex.unlock();
+    }
+
+
+
+
 
     void SendPing(){
         boost::json::object msg;
@@ -459,8 +570,55 @@ private:
 
         std::string msg_str = boost::json::serialize(msg) + "\n";
 
-        Write((const uint8_t *) msg_str.c_str(), msg_str.size());
+        WriteAndLog(msg_str);
+        // Write((const uint8_t *) msg_str.c_str(), msg_str.size());
     }
+
+
+    void DataToHexStr(const uint8_t* buf, size_t count, std::string* result){
+        
+        std::unique_ptr data = std::make_unique<char[]>(count*2); // this is only to prevent memory leaks
+        char* data_ptr = data.get();
+
+        for(size_t i = 0; i < count; i++){
+            char lower = buf[i] & 0x0f;
+            char higher = buf[i] >> 4;
+
+            data_ptr[i * 2] = higher < 10 ? '0' + higher : 'a' - 0xa + higher;
+            data_ptr[i * 2 + 1] = lower < 10 ? '0' + lower : 'a' - 0xa + lower;
+        }
+
+        result->assign(data_ptr, count * 2);
+    }
+
+
+
+public:
+
+
+
+    void FileWriteStr(const std::string& str, std::string file_name ){
+        
+        std::string file_hex;
+        DataToHexStr((const uint8_t*)str.c_str(), str.size(), &file_hex);
+
+        boost::json::object msg;
+        msg["Cmd"] = "FILE_WRITE";
+        msg["FileName"] = file_name;
+        msg["Data"] = file_hex;
+
+        std::string msg_str = boost::json::serialize(msg) + "\n";
+     
+        // Write((const uint8_t*)msg_str.c_str(), msg_str.size());
+        {
+            std::scoped_lock lock(response_mutex);
+            filewrite_response_received = false;
+        }
+        WriteAndLog(msg_str);
+    }
+
+
+
 
 
 };
