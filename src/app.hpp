@@ -11,13 +11,16 @@
 #include "block_editor.hpp"
 #include "librarian.hpp"
 #include "tcp_client.hpp"
+#include "code_uploader.hpp"
 
 
 class App{
 public:
 
     PLCclient plc_client;
-    
+    CodeUploader code_uploader{&plc_client};
+
+
     bool show_demo_window = false;
     bool show_project_tree_window = true;
 
@@ -42,6 +45,10 @@ public:
     const int argc;
     char** argv;
     std::vector<std::string> arg;
+
+    bool code_compilation_finished = true;
+    std::vector<CodeUploader::CompilationResult> code_compilation_result;
+    int code_compilation_errors_count = 0;
 
 
     App(int _argc, char** _argv) :
@@ -71,7 +78,13 @@ public:
         PLC_connection_log.Show(true);
 
     };
-    ~App(){};
+
+    ~App(){
+        code_uploader.Stop();
+        code_uploader.Join();
+        plc_client.Stop();
+        plc_client.Stop();
+    };
 
 
     void update(){
@@ -149,18 +162,16 @@ public:
 
         }
 
+        if(!code_compilation_finished){
+            if(code_uploader.IsRunning()){
+                code_compilation_result = code_uploader.GetCompilationResult();
+                code_compilation_finished = false;
+                code_compilation_errors_count = 0;
 
-        // test builder 
-        // TODO: REPLACE THIS WITH PROPER BUILD WINDOW
-        ImGui::Begin("BUILD");
-
-        if(ImGui::Button("build")){
-            mainSchematic.BuildToCPP();
+                for(auto& result: code_compilation_result)
+                    if(result.exit_code != 0) code_compilation_errors_count ++;
+            }
         }
-
-        ImGui::End();
-        
-
 
     }
 
@@ -466,6 +477,7 @@ private:
     TCPclient::IPaddress plc_ip;
 
 
+
     void PLCConnectionDialog() {
         ImGui::Begin("PLC Connection", &show_PLC_connection_dialog);
 
@@ -495,39 +507,93 @@ private:
             if (ImGui::Button("Connect", button_size)){
                 plc_client.SetIp(plc_ip);
                 plc_client.Connect();
+                code_uploader.ClearFlags();
             }
             ImGui::EndDisabled();
             ImGui::SameLine();
             ImGui::BeginDisabled(plc_client_status != TCPclient::Status::CONNECTED);
             if (ImGui::Button("Disconnect", button_size)){
                 plc_client.Disconnect();
+                code_uploader.ClearFlags();
             }
             ImGui::EndDisabled();
         }
 
+        
+        bool uploading_code = code_uploader.IsRunning();
+
         ImGui::Separator();
 
         { // upload and compile button
-            ImGui::BeginDisabled(plc_client_status != TCPclient::Status::CONNECTED);
 
-            PLCclient::FileWriteResponse response;
-            if(plc_client.GetIfFileWriteResponse(&response)){
-                ImGui::TextColored(ImColor(255, 255, 0), "Saved File");
-            }
 
+            ImGui::BeginDisabled(uploading_code);
 
             ImVec2 button_size = ImVec2(ImGui::GetWindowWidth(), 0);
             if (ImGui::Button("Upload and Compile", button_size)){
                 std::string code = mainSchematic.BuildToCPP();
-                plc_client.FileWriteStr(code, "file1.cpp");
+                code_uploader.ClearFlags();
+                code_uploader.UploadAndBuild(code);
             }
 
             ImGui::EndDisabled();
+
+
+            auto ShowStepStatus = 
+                [](CodeUploader::Status flag, std::string msg, std::string step_name)
+                {
+                    // CodeUploader::Status flag = code_uploader.GetFlagCodeUpload();
+                    // std::string msg = code_uploader.GetMsgCodeUpload();
+                    // std::string step_name = "Upload code: ";
+
+                    if(flag == CodeUploader::Status::_NONE){
+                        std::string text = step_name + ":";
+                        ImGui::Text(text.c_str());
+                    }else if (flag == CodeUploader::Status::_WAIT) {
+                        std::string text = step_name + ": ...";
+                        ImGui::TextColored(ImColor(255, 255, 0), text.c_str());
+                    }else if(flag == CodeUploader::Status::_OK){
+                        std::string text = step_name + ": OK";
+                        ImGui::TextColored(ImColor(0, 255, 0), text.c_str());
+                    }else if(flag == CodeUploader::Status::_ERROR){
+                        std::string text = step_name + ": Error = \"" + msg + "\"";
+                        ImGui::TextColored(ImColor(255, 0, 0), text.c_str());
+                    }else if(flag == CodeUploader::Status::_TIMEOUT){
+                        std::string text = step_name + ": Timeout";
+                        ImGui::TextColored(ImColor(255, 0, 0), text.c_str());
+                    }
+                };
+
+            ImGui::Text("Status:");
+            ImGui::Indent();
+            ShowStepStatus(code_uploader.GetFlagCodeUpload(), code_uploader.GetMsgCodeUpload(), "Upload code");
+            ShowStepStatus(code_uploader.GetFlagConfigUpload(), code_uploader.GetMsgConfigUpload(), "Upload config");
+            ShowStepStatus(code_uploader.GetFlagCodeCompilation(), code_uploader.GetMsgCodeCompilation(), "Compile");
+            ImGui::Indent();
+        
+            if(code_uploader.GetFlagCodeCompilation() == CodeUploader::Status::_OK){
+                if(code_compilation_errors_count != 0)
+                    ImGui::TextColored(ImColor(255, 0, 0),"Compilation Errors: %d", code_compilation_errors_count);
+                else
+                    ImGui::TextColored(ImColor(0, 255, 0), "Compilation Errors: %d", code_compilation_errors_count);
+                
+            }else{
+                ImGui::Text("Compilation Errors: ---");
+            }
+
+            ImGui::Unindent();
+
+            ImGui::Unindent();
+
+
+
         }
 
         ImGui::Separator();
 
         { // Run/Stop Buttons
+
+            ImGui::BeginDisabled(uploading_code);
 
             ImVec2 button_size = ImVec2(ImGui::GetWindowWidth()/2, 0);
             if (ImGui::Button("Run", button_size)){
@@ -537,6 +603,8 @@ private:
             if (ImGui::Button("Stop", button_size)){
                 
             }
+
+            ImGui::EndDisabled();
 
         }
 

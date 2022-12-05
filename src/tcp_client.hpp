@@ -2,54 +2,14 @@
 
 
 #include <boost/asio.hpp>
-#include <thread>
-#include <mutex>
 #include <iostream>
 #include <queue>
 #include <boost/json.hpp>
 #include <chrono>
 #include <functional>
+#include "thread.hpp"
 #include "debug_console.hpp"
 
-
-
-class Thread {
-	std::thread* thread;
-	std::mutex stopMutex;
-	bool stopFlag;
-
-
-public:
-	Thread() :thread(nullptr), stopFlag(false) {}
-	~Thread() { if (thread) delete thread; }
-
-	void Start() {
-		thread = new std::thread(&Thread::threadJob, this);
-	}
-
-
-	void Stop() {
-		stopMutex.lock();
-		stopFlag = true;
-		stopMutex.unlock();
-	}
-
-
-	bool IsRun() {
-		stopMutex.lock();
-		bool isRun = !stopFlag;
-		stopMutex.unlock();
-		return isRun;
-	}
-
-	void Join() {
-		thread->join();
-	}
-
-private:
-	virtual void threadJob() = 0;
-
-};
 
 
 
@@ -393,12 +353,26 @@ public:
         std::string msg;
     };
 
+    struct AppBuildResponse{
+        enum class Status{_OK, _ERR} status;
+        struct ErrorMsg{
+            int64_t exit_code;
+            std::string file;
+            std::string error;
+            ErrorMsg(): exit_code(0),file(),error(){};
+            ErrorMsg(int64_t _exit_code, std::string _file, std::string _error): exit_code(0),file(_file),error(_error){};
+        };
+        std::vector<ErrorMsg> compilation_errors;
+    };
+
 
 private:
     std::mutex response_mutex;
     bool filewrite_response_received = false;
     FileWriteResponse filewrite_response;
 
+    bool appbuild_response_received = false;
+    AppBuildResponse appbuild_response;
 
 public:
 
@@ -410,6 +384,16 @@ public:
             *response = filewrite_response;
         }
         return filewrite_response_received;
+    }
+
+    
+    bool GetIfCompileCodeeResponse(AppBuildResponse* response){
+        std::scoped_lock(response_mutex);
+
+        if(appbuild_response_received){
+            *response = appbuild_response;
+        }
+        return appbuild_response_received;
     }
 
 
@@ -491,6 +475,7 @@ private:
                     
                     if(cmd == "PING") onReadCommandResponsePing();
                     else if(cmd == "FILE_WRITE") onReadCommandResponseFileWrite(*obj_js);
+                    else if(cmd == "APP_BUILD") onReadCommandResponseAppBuild(*obj_js);
                 
                 }
             }
@@ -527,6 +512,51 @@ private:
             std::scoped_lock lock(response_mutex);
             filewrite_response_received = true;
             filewrite_response = response;
+        }
+    }
+
+    void onReadCommandResponseAppBuild(const boost::json::object& js){
+        AppBuildResponse response;
+
+        if(auto result_js = js.if_contains("Result")){
+            if(auto result_str = result_js->if_string()){
+                if(*result_str == "OK") response.status = AppBuildResponse::Status::_OK;
+                else response.status = AppBuildResponse::Status::_ERR;
+            }
+        }
+
+        if(auto errors_js = js.if_contains("CompilationResult")){
+            if(auto errors_arr_js = errors_js->if_array()){
+                for(auto error_js: *errors_arr_js){
+                    if(auto error_obj_js = error_js.if_object()){
+
+                        auto file_val = error_obj_js->if_contains("File");
+                        auto exit_code_val = error_obj_js->if_contains("ExitCode");
+                        auto error_msg_val = error_obj_js->if_contains("ErrorMsg");
+                        
+                        if(!file_val && !exit_code_val && !error_msg_val) continue;
+
+                        auto file_str = file_val->if_string();
+                        auto error_msg_str = error_msg_val->if_string();
+
+                        auto exit_code_num_i64 = exit_code_val->if_int64();
+                        auto exit_code_num_u64 = exit_code_val->if_uint64();
+
+                        if(!file_str && !error_msg_str) continue;
+                        if(!exit_code_num_i64 || !exit_code_num_u64) continue;
+
+                        int64_t error_code = exit_code_num_i64 ? *exit_code_num_i64 : *exit_code_num_u64;
+
+                        response.compilation_errors.emplace_back(error_code, file_str->c_str(), error_msg_str->c_str());
+                    }
+                }
+            }
+        }
+
+        {
+            std::scoped_lock lock(response_mutex);
+            appbuild_response_received = true;
+            appbuild_response = response;
         }
     }
 
@@ -617,6 +647,20 @@ public:
         WriteAndLog(msg_str);
     }
 
+
+    void CompileCode(){
+        boost::json::object msg;
+        msg["Cmd"] = "APP_BUILD";
+
+        std::string msg_str = boost::json::serialize(msg) + "\n";
+
+        {
+            std::scoped_lock lock(response_mutex);
+            appbuild_response_received = false;
+        }
+
+        WriteAndLog(msg_str);
+    }
 
 
 

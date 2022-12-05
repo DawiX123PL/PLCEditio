@@ -70,6 +70,8 @@ add_executable(PLCEditio
             "./src/librarian.cpp"
             "./src/librarian.hpp"
             "./src/tcp_client.hpp"
+            "./src/thread.hpp"
+            "./src/code_uploader.hpp"
             )
 
 add_subdirectory("libs/glfw")
