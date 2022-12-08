@@ -113,6 +113,7 @@ class BlockEditor: public WindowObject{
             float height;
             void CalcSize(){
                 height = ImGui::CalcTextSize((str + "x").c_str()).y;
+                // height = ImGui::CalcTextSize(str.c_str()).y + ImGui::CalcTextSize("x").y;
             }
             ImVec2 GetSize(){
                 if(height <= 0) CalcSize();

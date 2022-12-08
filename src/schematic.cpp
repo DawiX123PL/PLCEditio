@@ -605,12 +605,12 @@ std::string Schematic::BuildToCPP(){
 				if(i < params.size()){
 					if(std::holds_alternative<std::string>(params[i])){
 						std::string val = std::get<std::string>(params[i]);
-						param_str = object_name + ".parameter" + std::to_string(i) + " = " + val + ";";
+						param_str = object_name + ".parameter" + std::to_string(i) + " = \"" + val + "\";";
 					}else{
-						param_str = object_name + ".parameter" + std::to_string(i) + " = 0; // variant error";
+						param_str = object_name + ".parameter" + std::to_string(i) + " = \"\"; // variant error";
 					}
 				}else{
-					param_str = object_name + ".parameter" + std::to_string(i) + " = 0; // default";
+					param_str = object_name + ".parameter" + std::to_string(i) + " = \"\"; // default";
 				}
 			}
 
