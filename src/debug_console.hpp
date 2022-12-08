@@ -126,11 +126,34 @@ private:
             ImGui::BeginTooltip();
 
             ImGui::PushStyleColor(ImGuiCol_Text, GetPriorityColor(data.priority));
-            ImGui::Text(data.msg.c_str());
+
+            char empty_text[] = "                                                                                                         ";
+            if(ImGui::CalcTextSize(data.msg.c_str()).x > sizeof(empty_text)){
+                ImGui::Text(empty_text);
+                ImGui::TextWrapped(data.msg.c_str());
+            }else{
+                ImGui::Text(data.msg.c_str());
+            }
+
             ImGui::PopStyleColor();
 
             ImGui::EndTooltip();
         }
+
+        // if(ImGui::IsItemClicked()){
+        //     ImGui::OpenPopup("##DebugConsoleMsg");
+
+        // }
+
+
+        // if(ImGui::BeginPopup("##DebugConsoleMsg")){
+        //     ImGui::PushStyleColor(ImGuiCol_Text, GetPriorityColor(data.priority));
+        //     // ImGui::Text(data.msg.c_str());
+        //     ImGui::Text("                                                                                                         ");
+        //     ImGui::TextWrapped(data.msg.c_str());
+        //     ImGui::PopStyleColor();
+        //     ImGui::EndPopup();
+        // }
     }
 
 
