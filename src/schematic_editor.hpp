@@ -152,9 +152,11 @@ public:
                     auto src = conn.src.lock();
                     auto dst = conn.dst.lock();
 
-                    auto src_lib = src->lib_block.lock();
-
                     if(!src || !dst) continue;
+
+                    auto src_lib = src->lib_block.lock();
+                    if (!src_lib) continue;
+
                     int src_pin_imnodes = BlockData::GetImnodeOutputID(src->id, conn.src_pin);
                     int dst_pin_imnodes = BlockData::GetImnodeInputID(dst->id, conn.dst_pin);
                     

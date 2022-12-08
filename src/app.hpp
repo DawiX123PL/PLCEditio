@@ -561,11 +561,15 @@ private:
                     }else if(flag == CodeUploader::Status::_TIMEOUT){
                         std::string text = step_name + ": Timeout";
                         ImGui::TextColored(ImColor(255, 0, 0), text.c_str());
+                    }else if(flag == CodeUploader::Status::_DISCONNECTED){
+                        std::string text = step_name + ": Disconnected";
+                        ImGui::TextColored(ImColor(255, 0, 0), text.c_str());
                     }
                 };
 
             ImGui::Text("Status:");
             ImGui::Indent();
+            ShowStepStatus(code_uploader.GetFlagStopApp(), code_uploader.GetMsgAppStop(), "Stop App");
             ShowStepStatus(code_uploader.GetFlagCodeUpload(), code_uploader.GetMsgCodeUpload(), "Upload code");
             ShowStepStatus(code_uploader.GetFlagConfigUpload(), code_uploader.GetMsgConfigUpload(), "Upload config");
             ShowStepStatus(code_uploader.GetFlagCodeCompilation(), code_uploader.GetMsgCodeCompilation(), "Compile");

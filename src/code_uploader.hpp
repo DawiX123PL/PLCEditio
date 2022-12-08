@@ -21,6 +21,7 @@ public:
         _OK,
         _ERROR,
         _TIMEOUT,
+        _DISCONNECTED,
     };
 
     CodeUploader(PLCclient* c): plc_client(c){}
@@ -43,10 +44,12 @@ public:
 private:
     
     std::mutex flag_msg_mutex;
+    Status app_stop_flag = Status::_NONE;
     Status code_upload_flag = Status::_NONE;
     Status config_upload_flag = Status::_NONE;
     Status code_compilation_flag = Status::_NONE;
 
+    std::string app_stop_msg;
     std::string code_upload_msg;
     std::string config_upload_msg;
     std::string code_compilation_msg;
@@ -68,10 +71,12 @@ private:
 
 public:
 
+    Status GetFlagStopApp()        { std::scoped_lock lock(flag_msg_mutex); return app_stop_flag;}
     Status GetFlagCodeUpload()     { std::scoped_lock lock(flag_msg_mutex); return code_upload_flag;}
     Status GetFlagConfigUpload()   { std::scoped_lock lock(flag_msg_mutex); return config_upload_flag;}
     Status GetFlagCodeCompilation(){ std::scoped_lock lock(flag_msg_mutex); return code_compilation_flag;}
 
+    std::string GetMsgAppStop()        { std::scoped_lock lock(flag_msg_mutex); return app_stop_msg;}
     std::string GetMsgCodeUpload()     { std::scoped_lock lock(flag_msg_mutex); return code_upload_msg;}
     std::string GetMsgConfigUpload()   { std::scoped_lock lock(flag_msg_mutex); return config_upload_msg;}
     std::string GetMsgCodeCompilation(){ std::scoped_lock lock(flag_msg_mutex); return code_compilation_msg;}
@@ -80,9 +85,11 @@ public:
         if(IsRunning()) return;
 
         std::scoped_lock lock(flag_msg_mutex);
+        app_stop_flag = Status::_NONE;
         code_upload_flag = Status::_NONE;
         config_upload_flag = Status::_NONE;
         code_compilation_flag = Status::_NONE;
+        app_stop_msg = "";
         code_upload_msg = "";
         config_upload_msg = "";
         code_compilation_msg = "";
@@ -100,17 +107,55 @@ private:
     void threadJob() override{
 
         // step 0, reset status flags
+        SetFlag(&app_stop_flag, Status::_NONE);
         SetFlag(&code_upload_flag, Status::_NONE);
         SetFlag(&config_upload_flag, Status::_NONE);
         SetFlag(&code_compilation_flag, Status::_NONE);
+        SetResponseMsg(&app_stop_msg, "");
         SetResponseMsg(&code_upload_msg, "");
         SetResponseMsg(&config_upload_msg, "");
         SetResponseMsg(&code_compilation_msg, "");
 
+        { // step 1, stop currently running application
+            if(!plc_client->IsConnected()){
+                SetFlag(&app_stop_flag, Status::_DISCONNECTED);
+                return;    
+            }
+
+            plc_client->AppStop();
+            SetFlag(&app_stop_flag, Status::_WAIT);
+            
+            // wait until received response
+            PLCclient::AppStopResponse response;
+            auto start_time = std::chrono::high_resolution_clock::now();
+            
+            while(!plc_client->GetIfAppStopResponse(&response)){
+                std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+                auto now = std::chrono::high_resolution_clock::now();
+                if(now > (start_time + timeout_duration)){
+                    SetFlag(&app_stop_flag, Status::_TIMEOUT);
+                    return;
+                }
+            }
+            
+            if(response.status == PLCclient::AppStopResponse::Status::_ERR){
+                // stop thread on error
+                SetFlag(&app_stop_flag, Status::_ERROR);
+                SetResponseMsg(&app_stop_msg, response.msg);
+                return;
+            }else{
+                SetFlag(&app_stop_flag, Status::_OK);
+                SetResponseMsg(&app_stop_msg, response.msg);
+            }
+        }
 
         
-        { // step 1, upload code file
-            
+        { // step 2, upload code file
+            if(!plc_client->IsConnected()){
+                SetFlag(&code_upload_flag, Status::_DISCONNECTED);
+                return;    
+            }
+
             plc_client->FileWriteStr(code, "file1.cpp");
             SetFlag(&code_upload_flag, Status::_WAIT);
             
@@ -140,7 +185,11 @@ private:
         }
 
 
-        { // step 2, upload config file
+        { // step 3, upload config file
+            if(!plc_client->IsConnected()){
+                SetFlag(&config_upload_flag, Status::_DISCONNECTED);
+                return;    
+            }
             
             plc_client->FileWriteStr(config, "build.conf");
             SetFlag(&config_upload_flag, Status::_WAIT);
@@ -170,7 +219,12 @@ private:
 
         }
 
-        { // step 3, compile code
+        { // step 4, compile code
+            if(!plc_client->IsConnected()){
+                SetFlag(&code_compilation_flag, Status::_DISCONNECTED);
+                return;    
+            }
+
             plc_client->CompileCode();
             SetFlag(&code_compilation_flag, Status::_WAIT);
 

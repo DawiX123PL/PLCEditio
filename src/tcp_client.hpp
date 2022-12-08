@@ -349,11 +349,15 @@ private:
 
 public:
     struct FileWriteResponse{
+        FileWriteResponse():status(Status::_ERR){};
+
         enum class Status{_OK, _ERR} status;
         std::string msg;
     };
 
     struct AppBuildResponse{
+        AppBuildResponse():status(Status::_ERR){};
+
         enum class Status{_OK, _ERR} status;
         struct ErrorMsg{
             int64_t exit_code;
@@ -365,6 +369,19 @@ public:
         std::vector<ErrorMsg> compilation_errors;
     };
 
+    struct AppStartResponse{
+        AppStartResponse():status(Status::_ERR){};
+
+        enum class Status{_OK, _ERR} status;
+        std::string msg;
+    };
+
+    struct AppStopResponse{
+        AppStopResponse():status(Status::_ERR){};
+
+        enum class Status{_OK, _ERR} status;
+        std::string msg;
+    };
 
 private:
     std::mutex response_mutex;
@@ -373,6 +390,12 @@ private:
 
     bool appbuild_response_received = false;
     AppBuildResponse appbuild_response;
+
+    bool appstart_response_received = false;
+    AppStartResponse appstart_response;
+
+    bool appstop_response_received = false;
+    AppStopResponse appstop_response;
 
 public:
 
@@ -394,6 +417,24 @@ public:
             *response = appbuild_response;
         }
         return appbuild_response_received;
+    }
+
+    bool GetIfAppStartResponse(AppStartResponse* response){
+        std::scoped_lock(response_mutex);
+
+        if(appstart_response_received){
+            *response = appstart_response;
+        }
+        return appstart_response_received;
+    }
+
+    bool GetIfAppStopResponse(AppStopResponse* response){
+        std::scoped_lock(response_mutex);
+
+        if(appstop_response_received){
+            *response = appstop_response;
+        }
+        return appstop_response_received;
     }
 
 
@@ -476,7 +517,8 @@ private:
                     if(cmd == "PING") onReadCommandResponsePing();
                     else if(cmd == "FILE_WRITE") onReadCommandResponseFileWrite(*obj_js);
                     else if(cmd == "APP_BUILD") onReadCommandResponseAppBuild(*obj_js);
-                
+                    else if(cmd == "APP_START") onReadCommandResponseAppStart(*obj_js);
+                    else if(cmd == "APP_STOP") onReadCommandResponseAppStop(*obj_js);
                 }
             }
         }
@@ -560,6 +602,52 @@ private:
         }
     }
 
+    void onReadCommandResponseAppStart(const boost::json::object& js){
+        AppStartResponse response;
+
+        if(auto result_js = js.if_contains("Result")){
+            if(auto result_str = result_js->if_string()){
+                if(*result_str == "OK") response.status = AppStartResponse::Status::_OK;
+                else response.status = AppStartResponse::Status::_ERR;
+            }
+        }
+
+        if(auto msg_js = js.if_contains("Msg")){
+            if(auto msg_str = msg_js->if_string()){
+                response.msg = msg_str->c_str();
+            }
+        }
+
+        {
+            std::scoped_lock lock(response_mutex);
+            appstart_response_received = true;
+            appstart_response = response;
+        }
+    }
+
+    void onReadCommandResponseAppStop(const boost::json::object& js){
+        AppStopResponse response;
+
+        if(auto result_js = js.if_contains("Result")){
+            if(auto result_str = result_js->if_string()){
+                if(*result_str == "OK") response.status = AppStopResponse::Status::_OK;
+                else response.status = AppStopResponse::Status::_ERR;
+            }
+        }
+
+        if(auto msg_js = js.if_contains("Msg")){
+            if(auto msg_str = msg_js->if_string()){
+                response.msg = msg_str->c_str();
+            }
+        }
+
+        {
+            std::scoped_lock lock(response_mutex);
+            appstop_response_received = true;
+            appstop_response = response;
+        }
+    }
+
 
 
 
@@ -624,6 +712,36 @@ private:
 
 
 public:
+
+
+    void AppStart(){
+        boost::json::object msg;
+        msg["Cmd"] = "APP_START";
+
+        std::string msg_str = boost::json::serialize(msg) + "\n";
+
+        {
+            std::scoped_lock lock(response_mutex);
+            appstart_response_received = false;
+        }
+
+        WriteAndLog(msg_str);        
+    }
+
+
+    void AppStop(){
+        boost::json::object msg;
+        msg["Cmd"] = "APP_STOP";
+
+        std::string msg_str = boost::json::serialize(msg) + "\n";
+
+        {
+            std::scoped_lock lock(response_mutex);
+            appstop_response_received = false;
+        }
+
+        WriteAndLog(msg_str);        
+    }
 
 
 
