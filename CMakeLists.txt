@@ -95,7 +95,7 @@ target_link_libraries(PLCEditio "${CMAKE_SOURCE_DIR}/libs/boost/stage/lib/libboo
 target_link_libraries(PLCEditio "${CMAKE_SOURCE_DIR}/libs/boost/stage/lib/libboost_container-vc143-mt-gd-x64-1_80.lib")
 
 
-
+target_compile_definitions(PLCEditio PRIVATE BOOST_SYSTEM_USE_UTF8)
 target_compile_definitions(PLCEditio PRIVATE PLC_EDITIO_WINDOW_NAME="PLC Editio" )
 
 
