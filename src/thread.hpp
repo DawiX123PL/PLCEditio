@@ -46,7 +46,7 @@ public:
     }
 
 	void Join() {
-		thread->join();
+		if(thread) thread->join();
 	}
 
 private:
