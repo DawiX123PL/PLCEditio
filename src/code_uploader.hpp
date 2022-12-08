@@ -13,6 +13,7 @@ class CodeUploader: public Thread{
     std::string config;
 
     static constexpr std::chrono::duration timeout_duration = std::chrono::seconds(5);
+    static constexpr std::chrono::duration timeout_compilation_duration = std::chrono::seconds(60);
 
 public:
     enum class Status{
@@ -131,6 +132,10 @@ private:
             auto start_time = std::chrono::high_resolution_clock::now();
             
             while(!plc_client->GetIfAppStopResponse(&response)){
+                if(!plc_client->IsConnected()){
+                    SetFlag(&app_stop_flag, Status::_DISCONNECTED);
+                    return;    
+                }
                 std::this_thread::sleep_for(std::chrono::milliseconds(50));
                 auto now = std::chrono::high_resolution_clock::now();
                 if(now > (start_time + timeout_duration)){
@@ -165,6 +170,11 @@ private:
             auto start_time = std::chrono::high_resolution_clock::now();
             
             while(!plc_client->GetIfFileWriteResponse(&response)){
+                if(!plc_client->IsConnected()){
+                    SetFlag(&code_upload_flag, Status::_DISCONNECTED);
+                    return;    
+                }
+
                 std::this_thread::sleep_for(std::chrono::milliseconds(50));
                 auto now = std::chrono::high_resolution_clock::now();
                 if(now > (start_time + timeout_duration)){
@@ -200,6 +210,11 @@ private:
             auto start_time = std::chrono::high_resolution_clock::now();
 
             while(!plc_client->GetIfFileWriteResponse(&response)){
+                if(!plc_client->IsConnected()){
+                    SetFlag(&config_upload_flag, Status::_DISCONNECTED);
+                    return;    
+                }
+
                 std::this_thread::sleep_for(std::chrono::milliseconds(50));
                 auto now = std::chrono::high_resolution_clock::now();
                 if(now > (start_time + timeout_duration)){
@@ -234,9 +249,14 @@ private:
             auto start_time = std::chrono::high_resolution_clock::now();
 
             while(!plc_client->GetIfCompileCodeeResponse(&response)){
+                if(!plc_client->IsConnected()){
+                    SetFlag(&code_compilation_flag, Status::_DISCONNECTED);
+                    return;    
+                }
+
                 std::this_thread::sleep_for(std::chrono::milliseconds(50));
                 auto now = std::chrono::high_resolution_clock::now();
-                if(now > (start_time + timeout_duration)){
+                if(now > (start_time + timeout_compilation_duration)){
                     SetFlag(&code_compilation_flag, Status::_TIMEOUT);
                     return;
                 }

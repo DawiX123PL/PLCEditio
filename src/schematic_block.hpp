@@ -237,6 +237,13 @@ public:
 
                     const char* format = (val > 1000000.0) || (val < 1.0/1000000.0) ? "%.6e" : "%.6f";
                     ImGui::InputDouble(p.label.c_str(), &val, 0, 0, format);
+
+                    if(ImGui::IsItemHovered()){
+                        std::stringstream ss;
+						ss << std::setprecision(18) << val;
+						std::string val = ss.str();
+                        ImGui::SetTooltip(val.c_str());
+                    }
                 }
                 else if(p.type == "std::string"){
                     if(!std::holds_alternative<std::string>(p_mem)) p_mem = std::string("");

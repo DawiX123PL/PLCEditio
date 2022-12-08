@@ -2,6 +2,7 @@
 #include <boost/json.hpp>
 #include <boost/algorithm/string.hpp>
 #include <vector>
+#include <sstream>
 
 
 const char* Schematic::ErrorToStr(Error err) {
@@ -576,7 +577,10 @@ std::string Schematic::BuildToCPP(){
 			else if(lib_params[i].type == "double"){
 				if(i < params.size()){
 					if(std::holds_alternative<double>(params[i])){
-						std::string val = std::to_string(std::get<double>(params[i]));
+						std::stringstream ss;
+						ss << std::setprecision(18) << std::get<double>(params[i]);
+						std::string val = ss.str();
+
 						param_str =  object_name + ".parameter" + std::to_string(i) + " = " + val + ";";
 					}else{
 						param_str =  object_name + ".parameter" + std::to_string(i) + " = 0.0; // variant error";

@@ -3,6 +3,7 @@
 #include <memory>
 #include <imgui.h>
 #include <boost/json.hpp>
+#include <array>
 #include "dockspace.hpp"
 #include "status_bar.hpp"
 #include "debug_console.hpp"
@@ -31,8 +32,9 @@ public:
 
     bool show_create_block_dialog = false;
 
-
     bool show_compilation_errors_dialog = false;
+    bool show_produced_cpp_code_dialog = false;
+    bool show_compilation_flags_editor_dialog = false;
 
 
     DebugLogger PLC_connection_log;
@@ -56,8 +58,45 @@ public:
     int code_compilation_errors_count = 0;
 
 
-    boost::json::object app_build_config{};
+    struct AppBuildConfig{
+        std::vector<std::string> FilesConst()        { return {"file1.cpp"}; }
+        std::vector<std::string> IncludesConst()     { return {}; }
+        std::vector<std::string> C_CppFlagsConst() { return {"-Wall"}; }
+        std::vector<std::string> LdFlagsConst()    { return {"-Wall"}; }
 
+        std::vector<std::string> files;
+        std::vector<std::string> includes;
+        std::vector<std::string> c_cpp_flags;
+        std::vector<std::string> ld_flags;
+
+        std::string ToString(){
+            boost::json::object obj;
+
+            auto ToJsonArray = 
+                [](std::vector<std::string>& flags, std::vector<std::string> const_flags)->boost::json::array{
+                    boost::json::array arr;
+                    for(std::string& str: const_flags)
+                        arr.push_back(boost::json::string(str));
+                    
+                    for(std::string& str: flags)
+                        arr.push_back(boost::json::string(str));
+
+                    return arr;
+                };
+            
+            obj["Files"] = ToJsonArray(files, FilesConst());
+            obj["Includes"] = ToJsonArray(includes, IncludesConst());
+            obj["CPP_flags"] = ToJsonArray(c_cpp_flags, C_CppFlagsConst());
+            obj["C_flags"] = ToJsonArray(c_cpp_flags, C_CppFlagsConst());
+            obj["LD_flags"] = ToJsonArray(ld_flags, LdFlagsConst());
+
+            return boost::json::serialize(obj);
+        }
+    };
+
+    AppBuildConfig app_build_config;
+    std::string produced_cpp_code;
+    float produced_cpp_code_viewsize_y;
 
 
     App(int _argc, char** _argv) :
@@ -87,12 +126,12 @@ public:
         PLC_connection_log.Show(true);
 
 
-        app_build_config.clear();
-        app_build_config["Files"] = boost::json::array{ "file1.cpp" };
-        app_build_config["Includes"] = boost::json::array();
-        app_build_config["CPP_flags"] = boost::json::array({"-Wall", "-pass-exit-codes"});
-        app_build_config["C_flags"] = boost::json::array({ "-Wall", "-pass-exit-codes"});
-        app_build_config["LD_flags"] = boost::json::array({ "-Wall", "-pass-exit-codes" });
+        // app_build_config.clear();
+        // app_build_config["Files"] = boost::json::array{ "file1.cpp" };
+        // app_build_config["Includes"] = boost::json::array();
+        // app_build_config["CPP_flags"] = boost::json::array({"-Wall", "-pass-exit-codes"});
+        // app_build_config["C_flags"] = boost::json::array({ "-Wall", "-pass-exit-codes"});
+        // app_build_config["LD_flags"] = boost::json::array({ "-Wall", "-pass-exit-codes" });
     };
 
     ~App(){
@@ -550,12 +589,30 @@ private:
 
             ImVec2 button_size = ImVec2(ImGui::GetWindowWidth(), 0);
             if (ImGui::Button("Upload and Compile", button_size)){
-                std::string code = mainSchematic.BuildToCPP();
+                produced_cpp_code = mainSchematic.BuildToCPP();
+
                 code_uploader.ClearFlags();
-                code_uploader.UploadAndBuild(code, boost::json::serialize(app_build_config));
+                code_uploader.UploadAndBuild(produced_cpp_code, app_build_config.ToString());
+
+                produced_cpp_code_viewsize_y = ImGui::CalcTextSize( (produced_cpp_code+"\nX\nX").c_str() ).y;
             }
 
             ImGui::EndDisabled();
+
+
+
+
+            if (ImGui::Button("Edit compilation flags")) {
+                show_compilation_flags_editor_dialog = !show_compilation_flags_editor_dialog;
+            }
+
+            if (ImGui::Button("Show produced cpp code")) {
+                show_produced_cpp_code_dialog = !show_produced_cpp_code_dialog;
+            }
+
+            if (ImGui::Button("Show compilation errors")) {
+                show_compilation_errors_dialog = !show_compilation_errors_dialog;
+            }
 
 
             auto ShowStepStatus = 
@@ -609,39 +666,20 @@ private:
 
             ImGui::Unindent();
 
-
-            if (ImGui::Button("Show compilation errors")) {
-                show_compilation_errors_dialog = !show_compilation_errors_dialog;
+            if(show_compilation_flags_editor_dialog){
+                CompilationFlagsEditorWindow();
             }
 
+
+            // show compilation errors in separate window
             if (show_compilation_errors_dialog) {
-                if (ImGui::Begin("Compilation Errors", &show_compilation_errors_dialog)) {
+                CompilationErrorWindow();
+            }
 
-                    for(int i = 0; i < code_compilation_result.size(); i++){
-                        CodeUploader::CompilationResult& result = code_compilation_result[i];
-                        ImGui::PushID(i);
-
-                        if(result.exit_code != 0){
-                            ImGui::TextColored(ImColor(255, 0, 0), (result.file + " - compilation failed").c_str());
-                        }else if(!result.error.empty()){
-                            ImGui::TextColored(ImColor(255, 255, 0), (result.file + " - compiled with warnings").c_str());
-                        }else{
-                            ImGui::TextColored(ImColor(0, 255, 0), (result.file + " - compiled without warnings").c_str());
-                        }
-
-                        ImGui::Text(("Exit code: " + std::to_string(result.exit_code )).c_str());
-
-                        ImVec2 error_msg_size;
-                        error_msg_size.x =  ImGui::GetWindowWidth();
-                        error_msg_size.y = ImGui::CalcTextSize(result.error.c_str()).y + ImGui::CalcTextSize("X").y;
-
-                        ImGui::InputTextMultiline("##ErrMsg", &result.error, error_msg_size, ImGuiInputTextFlags_ReadOnly);
-
-                        ImGui::PopID();
-                    }
-
-                }
-                ImGui::End();
+            
+            // show show produced cpp code in separate window
+            if(show_produced_cpp_code_dialog){
+                CppCodeDisplayWindow();
             }
 
         }
@@ -669,6 +707,158 @@ private:
 
         ImGui::End();
     }
+
+
+    void CppCodeDisplayWindow(){
+    
+        if (ImGui::Begin("CPP code", &show_produced_cpp_code_dialog)) {
+
+            if(ImGui::Button("Rebuild code")){
+                produced_cpp_code = mainSchematic.BuildToCPP();
+                produced_cpp_code_viewsize_y = ImGui::CalcTextSize( (produced_cpp_code+"\nX\nX").c_str() ).y;
+            }
+
+            ImGui::TextColored(ImColor(255,255,0), "Code is read only");
+
+            ImGui::BeginChild("##CODE", ImVec2(0,0));
+
+            ImVec2 size;
+            size.x = ImGui::GetWindowWidth();
+            size.y = produced_cpp_code_viewsize_y;
+
+            ImGui::InputTextMultiline("##CODE_TEXT", &produced_cpp_code, size, ImGuiInputTextFlags_ReadOnly);
+
+            ImGui::EndChild();
+        }
+        ImGui::End();
+    
+    }
+
+
+    void CompilationErrorWindow(){
+
+        if (ImGui::Begin("Compilation Errors", &show_compilation_errors_dialog)) {
+
+            if(code_compilation_result.empty()){
+                ImGui::TextColored(ImColor(255,255,0), "Compile code to show errors");
+            }
+
+            for(int i = 0; i < code_compilation_result.size(); i++){
+                CodeUploader::CompilationResult& result = code_compilation_result[i];
+                ImGui::PushID(i);
+
+                if(result.exit_code != 0){
+                    ImGui::TextColored(ImColor(255, 0, 0), result.file.c_str());
+                }else if(!result.error.empty()){
+                    ImGui::TextColored(ImColor(255, 255, 0), result.file.c_str());
+                }else{
+                    ImGui::TextColored(ImColor(0, 255, 0), result.file.c_str());
+                }
+
+                ImGui::Indent();
+
+                if(result.exit_code != 0){
+                    ImGui::TextColored(ImColor(255, 0, 0), "compilation failed");
+                }else if(!result.error.empty()){
+                    ImGui::TextColored(ImColor(255, 255, 0), "compiled with warnings");
+                }else{
+                    ImGui::TextColored(ImColor(0, 255, 0),  "compiled without warnings");
+                }
+
+                ImGui::Text(("Exit code: " + std::to_string(result.exit_code )).c_str());
+                ImGui::Unindent();
+
+                ImVec2 error_msg_size;
+                error_msg_size.x =  ImGui::GetWindowWidth();
+                error_msg_size.y = ImGui::CalcTextSize(result.error.c_str()).y + ImGui::CalcTextSize("X").y;
+
+                ImGui::InputTextMultiline("##ErrMsg", &result.error, error_msg_size, ImGuiInputTextFlags_ReadOnly);
+
+                ImGui::PopID();
+            }
+
+        }
+        ImGui::End();
+    }
+
+
+
+    void CompilationFlagsEditorWindow(){
+        if(ImGui::Begin("Compilation Flags", &show_compilation_flags_editor_dialog)){
+
+            auto FlagsEdit =
+                [](std::vector<std::string>& flags, std::vector<std::string> const_flags) {
+
+                int count = flags.size() + const_flags.size();
+
+                ImGui::InputInt("count", &count, 1, 1);
+                count = count > const_flags.size() ? count : const_flags.size();
+
+                int editable_count = count - const_flags.size();
+                if (editable_count != flags.size())
+                    flags.resize(editable_count);
+
+                int i = 0;
+
+                ImGui::BeginDisabled();
+                for (std::string& flag : const_flags){
+                    ImGui::PushID(i++);
+                    ImGui::InputText("##f", &flag);
+                    ImGui::PopID();
+                }
+                ImGui::EndDisabled();
+
+                for (std::string& flag : flags) {
+                    ImGui::PushID(i++);
+                    ImGui::InputText("##f", &flag);
+                    ImGui::PopID();
+                }
+            };
+
+            if(ImGui::TreeNode("CPP Files")){
+                FlagsEdit(app_build_config.files, app_build_config.FilesConst());
+                ImGui::TreePop();
+            }
+            if(ImGui::TreeNode("Included Files")){
+                FlagsEdit(app_build_config.includes, app_build_config.IncludesConst());
+                ImGui::TreePop();
+            }
+            if(ImGui::TreeNode("c/c++ flags")){
+                FlagsEdit(app_build_config.c_cpp_flags, app_build_config.C_CppFlagsConst());
+                ImGui::TreePop();
+            }
+            if(ImGui::TreeNode("Linker flags")){
+                FlagsEdit(app_build_config.ld_flags, app_build_config.LdFlagsConst());
+                ImGui::TreePop();
+            }
+
+            // if(ImGui::TreeNode("Files")){
+
+            //     std::vector<const char*> files_const = app_build_config.FilesConst();
+            //     int count = app_build_config.files.size() + files_const.size();
+            //     count = count < files_const.size();
+
+            //     ImGui::InputInt("files count", count, 1, 1);
+
+                
+            //     int i = 0;
+            //     for(std::string& file: app_build_config.files){
+            //         ImGui::PushID(i++);
+            //         ImGui::InputText("##f",file);
+            //         ImGui::PopID()
+            //     }
+
+            //     for(std::string& file: app_build_config.files){
+            //         ImGui::PushID(i++);
+            //         ImGui::InputText("##f",file);
+            //         ImGui::PopID()
+            //     }
+            // }
+
+        }
+        ImGui::End();
+    }
+
 
 
     void ProjectTreeWindow() {
