@@ -364,7 +364,7 @@ public:
             std::string file;
             std::string error;
             ErrorMsg(): exit_code(0),file(),error(){};
-            ErrorMsg(int64_t _exit_code, std::string _file, std::string _error): exit_code(0),file(_file),error(_error){};
+            ErrorMsg(int64_t _exit_code, std::string _file, std::string _error): exit_code(_exit_code), file(_file),error(_error){};
         };
         std::vector<ErrorMsg> compilation_errors;
     };
@@ -576,7 +576,7 @@ private:
                         auto exit_code_val = error_obj_js->if_contains("ExitCode");
                         auto error_msg_val = error_obj_js->if_contains("ErrorMsg");
                         
-                        if(!file_val && !exit_code_val && !error_msg_val) continue;
+                        if(!file_val || !exit_code_val || !error_msg_val) continue;
 
                         auto file_str = file_val->if_string();
                         auto error_msg_str = error_msg_val->if_string();
@@ -584,8 +584,8 @@ private:
                         auto exit_code_num_i64 = exit_code_val->if_int64();
                         auto exit_code_num_u64 = exit_code_val->if_uint64();
 
-                        if(!file_str && !error_msg_str) continue;
-                        if(!exit_code_num_i64 || !exit_code_num_u64) continue;
+                        if(!file_str || !error_msg_str) continue;
+                        if(!exit_code_num_i64 && !exit_code_num_u64) continue;
 
                         int64_t error_code = exit_code_num_i64 ? *exit_code_num_i64 : *exit_code_num_u64;
 

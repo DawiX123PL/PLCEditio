@@ -26,9 +26,10 @@ public:
 
     CodeUploader(PLCclient* c): plc_client(c){}
 
-    void UploadAndBuild(std::string _code){
+    void UploadAndBuild(std::string _code, std::string _config){
         if(IsRunning()) return;
         code = _code;
+        config = _config;
         Start();
     }
 
@@ -37,7 +38,7 @@ public:
         std::string file;
         std::string error;
         CompilationResult(): exit_code(0),file(),error(){};
-        CompilationResult(int64_t _exit_code, std::string _file, std::string _error): exit_code(0),file(_file),error(_error){};
+        CompilationResult(int64_t _exit_code, std::string _file, std::string _error): exit_code(_exit_code),file(_file),error(_error){};
     };
 
 
@@ -130,7 +131,7 @@ private:
             auto start_time = std::chrono::high_resolution_clock::now();
             
             while(!plc_client->GetIfAppStopResponse(&response)){
-                std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
                 auto now = std::chrono::high_resolution_clock::now();
                 if(now > (start_time + timeout_duration)){
                     SetFlag(&app_stop_flag, Status::_TIMEOUT);
@@ -164,7 +165,7 @@ private:
             auto start_time = std::chrono::high_resolution_clock::now();
             
             while(!plc_client->GetIfFileWriteResponse(&response)){
-                std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
                 auto now = std::chrono::high_resolution_clock::now();
                 if(now > (start_time + timeout_duration)){
                     SetFlag(&code_upload_flag, Status::_TIMEOUT);
@@ -199,7 +200,7 @@ private:
             auto start_time = std::chrono::high_resolution_clock::now();
 
             while(!plc_client->GetIfFileWriteResponse(&response)){
-                std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
                 auto now = std::chrono::high_resolution_clock::now();
                 if(now > (start_time + timeout_duration)){
                     SetFlag(&config_upload_flag, Status::_TIMEOUT);
@@ -233,7 +234,7 @@ private:
             auto start_time = std::chrono::high_resolution_clock::now();
 
             while(!plc_client->GetIfCompileCodeeResponse(&response)){
-                std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
                 auto now = std::chrono::high_resolution_clock::now();
                 if(now > (start_time + timeout_duration)){
                     SetFlag(&code_compilation_flag, Status::_TIMEOUT);

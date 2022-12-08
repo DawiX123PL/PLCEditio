@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <imgui.h>
+#include <boost/json.hpp>
 #include "dockspace.hpp"
 #include "status_bar.hpp"
 #include "debug_console.hpp"
@@ -30,6 +31,10 @@ public:
 
     bool show_create_block_dialog = false;
 
+
+    bool show_compilation_errors_dialog = false;
+
+
     DebugLogger PLC_connection_log;
     DebugLogger PLC_message_log;
     DebugLogger event_log;
@@ -46,9 +51,13 @@ public:
     char** argv;
     std::vector<std::string> arg;
 
-    bool code_compilation_finished = true;
+    bool code_compilation_running = true;
     std::vector<CodeUploader::CompilationResult> code_compilation_result;
     int code_compilation_errors_count = 0;
+
+
+    boost::json::object app_build_config{};
+
 
 
     App(int _argc, char** _argv) :
@@ -77,6 +86,13 @@ public:
         event_log.Show(true);
         PLC_connection_log.Show(true);
 
+
+        app_build_config.clear();
+        app_build_config["Files"] = boost::json::array{ "file1.cpp" };
+        app_build_config["Includes"] = boost::json::array();
+        app_build_config["CPP_flags"] = boost::json::array({"-Wall", "-pass-exit-codes"});
+        app_build_config["C_flags"] = boost::json::array({ "-Wall", "-pass-exit-codes"});
+        app_build_config["LD_flags"] = boost::json::array({ "-Wall", "-pass-exit-codes" });
     };
 
     ~App(){
@@ -162,15 +178,18 @@ public:
 
         }
 
-        if(!code_compilation_finished){
-            if(code_uploader.IsRunning()){
-                code_compilation_result = code_uploader.GetCompilationResult();
-                code_compilation_finished = false;
-                code_compilation_errors_count = 0;
+        if(!code_uploader.IsRunning() && code_compilation_running){
+            code_compilation_result = code_uploader.GetCompilationResult();
+            code_compilation_running = false;
+            code_compilation_errors_count = 0;
 
-                for(auto& result: code_compilation_result)
-                    if(result.exit_code != 0) code_compilation_errors_count ++;
-            }
+            for(auto& result: code_compilation_result)
+                if(result.exit_code != 0) code_compilation_errors_count ++;
+            
+        }
+
+        if (code_uploader.IsRunning() && !code_compilation_running) {
+            code_compilation_running = true;
         }
 
     }
@@ -533,7 +552,7 @@ private:
             if (ImGui::Button("Upload and Compile", button_size)){
                 std::string code = mainSchematic.BuildToCPP();
                 code_uploader.ClearFlags();
-                code_uploader.UploadAndBuild(code);
+                code_uploader.UploadAndBuild(code, boost::json::serialize(app_build_config));
             }
 
             ImGui::EndDisabled();
@@ -585,11 +604,45 @@ private:
                 ImGui::Text("Compilation Errors: ---");
             }
 
-            ImGui::Unindent();
 
             ImGui::Unindent();
 
+            ImGui::Unindent();
 
+
+            if (ImGui::Button("Show compilation errors")) {
+                show_compilation_errors_dialog = !show_compilation_errors_dialog;
+            }
+
+            if (show_compilation_errors_dialog) {
+                if (ImGui::Begin("Compilation Errors", &show_compilation_errors_dialog)) {
+
+                    for(int i = 0; i < code_compilation_result.size(); i++){
+                        CodeUploader::CompilationResult& result = code_compilation_result[i];
+                        ImGui::PushID(i);
+
+                        if(result.exit_code != 0){
+                            ImGui::TextColored(ImColor(255, 0, 0), (result.file + " - compilation failed").c_str());
+                        }else if(!result.error.empty()){
+                            ImGui::TextColored(ImColor(255, 255, 0), (result.file + " - compiled with warnings").c_str());
+                        }else{
+                            ImGui::TextColored(ImColor(0, 255, 0), (result.file + " - compiled without warnings").c_str());
+                        }
+
+                        ImGui::Text(("Exit code: " + std::to_string(result.exit_code )).c_str());
+
+                        ImVec2 error_msg_size;
+                        error_msg_size.x =  ImGui::GetWindowWidth();
+                        error_msg_size.y = ImGui::CalcTextSize(result.error.c_str()).y + ImGui::CalcTextSize("X").y;
+
+                        ImGui::InputTextMultiline("##ErrMsg", &result.error, error_msg_size, ImGuiInputTextFlags_ReadOnly);
+
+                        ImGui::PopID();
+                    }
+
+                }
+                ImGui::End();
+            }
 
         }
 
