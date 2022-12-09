@@ -14,6 +14,8 @@
 #include "librarian.hpp"
 #include "tcp_client.hpp"
 #include "code_uploader.hpp"
+#include "status_checker.hpp"
+
 
 
 class App{
@@ -21,6 +23,7 @@ public:
 
     PLCclient plc_client;
     CodeUploader code_uploader{&plc_client};
+    StatusChecker status_checker{&plc_client};
 
 
     bool show_demo_window = false;
@@ -144,7 +147,7 @@ public:
 
     void update(){
 
-        int status_bar_size = ShowStatusBar();
+        int status_bar_size = ShowStatusBar(status_checker.GetAppStatus());
         ShowDockspace(status_bar_size);
         ShowMainMenu();
 
@@ -542,7 +545,6 @@ private:
         ImGui::InputScalarN("IP Adress", ImGuiDataType_U8, plc_ip.addr, 4);
         ImGui::InputScalar("Port", ImGuiDataType_U16, &plc_ip.port);
 
-        ImGui::Separator();
 
         TCPclient::Status plc_client_status = plc_client.GetStatus();
 
@@ -557,7 +559,6 @@ private:
             };
         }
 
-        ImGui::Separator();
 
         { // Connect/Disconnect buttons
             ImVec2 button_size = ImVec2(ImGui::GetWindowWidth()/2, 0);
@@ -692,14 +693,26 @@ private:
 
             ImVec2 button_size = ImVec2(ImGui::GetWindowWidth()/2, 0);
             if (ImGui::Button("Run", button_size)){
-                
+                plc_client.AppStart();
             }
             ImGui::SameLine();
             if (ImGui::Button("Stop", button_size)){
-                
+                plc_client.AppStop();
             }
 
             ImGui::EndDisabled();
+
+            
+            StatusChecker::AppStatus status = status_checker.GetAppStatus();
+
+            switch(status){
+            case StatusChecker::AppStatus::_DISCONNECTED : ImGui::Text("Disconnected"); break;
+            case StatusChecker::AppStatus::_UNNOWN :       ImGui::TextColored(ImColor(255,255,0),"Unnown"); break;
+            case StatusChecker::AppStatus::_TIMEOUT :      ImGui::TextColored(ImColor(255,255,0),"Communication Timeout"); break;
+            case StatusChecker::AppStatus::_RUNNING :      ImGui::TextColored(ImColor(0,255,0),"Running"); break;
+            case StatusChecker::AppStatus::_STOPPED :      ImGui::TextColored(ImColor(255,0,0),"Stopped"); break;
+            }
+
 
         }
 
@@ -770,7 +783,7 @@ private:
 
                 ImVec2 error_msg_size;
                 error_msg_size.x =  ImGui::GetWindowWidth();
-                error_msg_size.y = ImGui::CalcTextSize(result.error.c_str()).y + ImGui::CalcTextSize("X").y;
+                error_msg_size.y = ImGui::CalcTextSize(result.error.c_str()).y + ImGui::CalcTextSize("\n\n\nx").y;
 
                 ImGui::InputTextMultiline("##ErrMsg", &result.error, error_msg_size, ImGuiInputTextFlags_ReadOnly);
 

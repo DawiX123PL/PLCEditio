@@ -630,6 +630,7 @@ std::string Schematic::BuildToCPP(){
 	std::string code = 
 	"#include <string>\n"
 	"#include <inttypes.h>\n"
+	"#include <PLC_app.hpp>"
 	"\n\n"
 	"// 	block classes"
 	"\n\n";
@@ -675,6 +676,7 @@ std::string Schematic::BuildToCPP(){
 	code += 
 	"\n\n"
 	"    while(true){\n\n"
+	"       PLC::LoopStart();\n"
 	"// 	Update blocks\n"
 	"\n\n";
 
@@ -683,7 +685,9 @@ std::string Schematic::BuildToCPP(){
 
 
 	code += 
-	"\n\n"
+	"\n"
+	"       PLC::LoopEnd();"
+	"\n"
 	"    }\n"
 	"}\n"
 	"\n\n";

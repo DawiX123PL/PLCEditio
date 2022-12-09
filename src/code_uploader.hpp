@@ -144,7 +144,7 @@ private:
                 }
             }
             
-            if(response.status == PLCclient::AppStopResponse::Status::_ERR){
+            if(response.result == PLCclient::AppStopResponse::Result::_ERR){
                 // stop thread on error
                 SetFlag(&app_stop_flag, Status::_ERROR);
                 SetResponseMsg(&app_stop_msg, response.msg);
@@ -183,7 +183,7 @@ private:
                 }
             }
             
-            if(response.status == PLCclient::FileWriteResponse::Status::_ERR){
+            if(response.result == PLCclient::FileWriteResponse::Result::_ERR){
                 // stop thread on error
                 SetFlag(&code_upload_flag, Status::_ERROR);
                 SetResponseMsg(&code_upload_msg, response.msg);
@@ -223,7 +223,7 @@ private:
                 }
             }
             
-            if(response.status == PLCclient::FileWriteResponse::Status::_ERR){
+            if(response.result == PLCclient::FileWriteResponse::Result::_ERR){
                 // stop thread on error
                 SetFlag(&config_upload_flag, Status::_ERROR);
                 SetResponseMsg(&config_upload_msg, response.msg);
@@ -262,7 +262,7 @@ private:
                 }
             }
 
-            if(response.status == PLCclient::AppBuildResponse::Status::_ERR){
+            if(response.result == PLCclient::AppBuildResponse::Result::_ERR){
                 // stop thread on error
                 SetFlag(&code_compilation_flag, Status::_ERROR);
                 SetResponseMsg(&code_compilation_msg, "");
