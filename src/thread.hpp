@@ -13,7 +13,13 @@ class Thread {
 
 public:
 	Thread() :thread(nullptr), stopFlag(false), isRunning(false) {}
-	~Thread() { if (thread) delete thread; }
+	virtual ~Thread() {
+		if (thread) {
+			Stop();
+			Join();
+			delete thread;
+		}
+	}
 
 	void Start() {
 		if(thread) Join();
@@ -46,7 +52,10 @@ public:
     }
 
 	void Join() {
-		if(thread) thread->join();
+		if (thread) {
+			if(thread->joinable())
+				thread->join();
+		}
 	}
 
 private:

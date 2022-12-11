@@ -4,7 +4,7 @@
 #include "thread.hpp"
 #include "tcp_client.hpp"
 
-class StatusChecker: private Thread{
+class StatusChecker: public Thread{
 public:
 
     enum class AppStatus{

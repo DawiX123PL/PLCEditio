@@ -135,13 +135,16 @@ public:
         // app_build_config["CPP_flags"] = boost::json::array({"-Wall", "-pass-exit-codes"});
         // app_build_config["C_flags"] = boost::json::array({ "-Wall", "-pass-exit-codes"});
         // app_build_config["LD_flags"] = boost::json::array({ "-Wall", "-pass-exit-codes" });
+
     };
 
     ~App(){
         code_uploader.Stop();
         code_uploader.Join();
+        status_checker.Stop();
+        status_checker.Join();
         plc_client.Stop();
-        plc_client.Stop();
+        plc_client.Join();
     };
 
 
@@ -808,11 +811,13 @@ private:
                 count = count > const_flags.size() ? count : const_flags.size();
 
                 int editable_count = count - const_flags.size();
+                if (editable_count < 0) editable_count = 0;
                 if (editable_count != flags.size())
                     flags.resize(editable_count);
 
                 int i = 0;
-
+                
+                ImGui::Indent();
                 ImGui::BeginDisabled();
                 for (std::string& flag : const_flags){
                     ImGui::PushID(i++);
@@ -826,6 +831,7 @@ private:
                     ImGui::InputText("##f", &flag);
                     ImGui::PopID();
                 }
+                ImGui::Unindent();
             };
 
             if(ImGui::TreeNode("CPP Files")){
