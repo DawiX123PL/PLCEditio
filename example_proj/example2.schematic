@@ -1,0 +1,1 @@
+{"blocks":[{"id":12,"pos":[568,534],"name":"\\LOCAL\\PLC_output","params":[0]},{"id":13,"pos":[389,537],"name":"\\LOCAL\\bool_const","params":[false]}],"connections":[{"src":13,"src_pin":0,"dst":12,"dst_pin":0}]}
