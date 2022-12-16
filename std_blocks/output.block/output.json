@@ -1,9 +1,0 @@
-{
-    "title":"output",
-    "inputs":[
-        {"label": "o1", "type": "bool"}
-    ],
-    "outputs":[
-        
-    ]
-}
