@@ -6,6 +6,8 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 #include <GLFW/glfw3.h>
+#include <filesystem>
+#include <memory>
 #include <imnodes.h>
 #include "app.hpp"
 
@@ -73,6 +75,25 @@ int main(int argc, char** argv){
 
     ImGuiIO& io = ImGui::GetIO();
 
+    // change imgui.ini location
+    
+    std::filesystem::path exe = argv[0];
+    std::filesystem::path imgui_ini = exe.parent_path().append("imgui.ini");
+    
+    int count = 0;
+    while (imgui_ini.c_str()[count++]); // find end of string;
+
+    // this might me unnecessary because memory leak in this place would leak 4kb max 
+    // and only once
+    std::unique_ptr<char[]> ini_file_name = std::make_unique<char[]>(count);
+
+    for (int i = 0; i < count; i++)
+        ini_file_name[i] = imgui_ini.c_str()[i];
+
+    io.IniFilename = ini_file_name.get();
+    
+
+    // set viewport properties
     io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;

@@ -76,7 +76,8 @@ public:
             boost::json::object obj;
 
             auto ToJsonArray = 
-                [](std::vector<std::string>& flags, std::vector<std::string> const_flags)->boost::json::array{
+                [](std::vector<std::string>& flags, std::vector<std::string> const_flags)->boost::json::array
+                {
                     boost::json::array arr;
                     for(std::string& str: const_flags)
                         arr.push_back(boost::json::string(str));

@@ -91,8 +91,10 @@ public:
 
         auto& io = ImGui::GetIO();
 
+        ImGui::SetNextWindowSizeConstraints(ImVec2(100,100), ImVec2(1e+20,1e+20)); // set minimum size to (100, 100)
 
         if (ImGui::Begin(window_name.c_str(), &show)) {
+
 
             ImNodes::SetCurrentContext(context);
             ImNodes::EditorContextSet(context_editor);

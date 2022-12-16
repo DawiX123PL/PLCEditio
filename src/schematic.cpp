@@ -407,11 +407,26 @@ std::string Schematic::BuildToCPP(){
 		lib_blocks.unique();
 	}
 
+	std::vector<std::string> block_class_names;
 
 	// step 2 - read and process blocks code
 	for(const auto& block_lib: lib_blocks){
 		
 		std::string full_name =  block_lib->FullName();
+
+		// check if block class already inserted and exclude duplicate
+		bool found_duplicate = false;
+		for (const std::string& f_name : block_class_names) {
+			if (f_name == full_name) {
+				found_duplicate = true;
+				break;
+			}
+		}
+
+		// exclude duplicate
+		if (found_duplicate) continue;
+
+
 		std::string code;
 
 		blocks_cpp_classes.push_back("");
@@ -444,7 +459,7 @@ std::string Schematic::BuildToCPP(){
 			std::string r_class_prolog;
 			{
 				r_class_prolog = 
-					"class " + full_name_processed + "_block{ \n"
+					"\n\nclass " + full_name_processed + "_block{ \n"
 					"public: \n";
 				
 				auto inputs = block_lib->Inputs();
@@ -496,6 +511,7 @@ std::string Schematic::BuildToCPP(){
 					+ r_class_epilog;
 
 			blocks_cpp_classes.back() = processed_code;
+			block_class_names.push_back(full_name);
 		}
 	}
 
@@ -676,7 +692,7 @@ std::string Schematic::BuildToCPP(){
 	code += 
 	"\n\n"
 	"    while(true){\n\n"
-	"       PLC::LoopStart();\n"
+	"       if(!PLC::LoopStart()) return 0;\n"
 	"// 	Update blocks\n"
 	"\n\n";
 
