@@ -19,7 +19,7 @@ public:
 
     void update(){
 //////****** begin update ******//////
-		PLC::IOmoduleData data  = PLC::GetIO(0);
+		PLC::IOmoduleData data  = PLC::GetIO();
 		output0 = data.input & (1<<parameter0);
 //////****** end update ******//////
     }

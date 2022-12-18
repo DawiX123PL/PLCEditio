@@ -18,18 +18,19 @@ public:
     }
 
     void update(){
+		
 //////****** begin update ******//////
-		
-		
+				
 		PLC::IOmoduleData data = PLC::GetIO();
 
 		if(*input0)
-			data.output = 0xffffffff;
+			data.output |= (1<<parameter0);
 		else
-			data.output = 0x00000000;
+			data.output &= ~(1<<parameter0);;
 
 		PLC::SetIO(data);
 
 //////****** end update ******//////
+
     }
 };
