@@ -396,8 +396,23 @@ std::string Schematic::BuildToCPP(){
 		for(const auto& block: blocks) {
 			auto lib_block = block->lib_block.lock(); 
 
+
 			if(lib_block){
-				lib_blocks.push_back(lib_block);
+				// check for duplicates
+				std::string full_name1 = lib_block->FullName();
+				bool found_duplicate = false;
+
+				for (auto b : lib_blocks) {
+					std::string full_name2 = b->FullName();
+					if (full_name2 == full_name1) {
+						found_duplicate = true;
+						break;
+					}
+				}
+
+				if (!found_duplicate)
+					lib_blocks.push_back(lib_block);
+
 			}else{
 				//TODO: handle this error later;
 			}
@@ -413,20 +428,6 @@ std::string Schematic::BuildToCPP(){
 	for(const auto& block_lib: lib_blocks){
 		
 		std::string full_name =  block_lib->FullName();
-
-		// check if block class already inserted and exclude duplicate
-		bool found_duplicate = false;
-		for (const std::string& f_name : block_class_names) {
-			if (f_name == full_name) {
-				found_duplicate = true;
-				break;
-			}
-		}
-
-		// exclude duplicate
-		if (found_duplicate) continue;
-
-
 		std::string code;
 
 		blocks_cpp_classes.push_back("");
@@ -434,6 +435,9 @@ std::string Schematic::BuildToCPP(){
 		{// 2.1 - read code from file
 			BlockData::Error err = block_lib->ReadCode(&code);
 			if(err != BlockData::Error::OK) continue; //TODO: handle this error later;
+
+			// convert '\r' -> '\n' to prevent errors
+			boost::replace_all(code, "\r", "\n");
 		}
 
 		{// 2.2 - process code and replace name with full_name;
