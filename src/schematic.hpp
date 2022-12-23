@@ -15,6 +15,7 @@
 
 class Schematic {
 
+public:
 
 	struct Block {
 		std::weak_ptr<BlockData> lib_block;
@@ -87,6 +88,8 @@ class Schematic {
 		}
 	};
 
+
+private:
 	struct ConnectionRaw {
 		int src;
 		int src_pin;

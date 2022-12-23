@@ -23,7 +23,7 @@ class BlockEditor: public WindowObject{
     int parameters_count;
     int inputs_count;
     int outputs_count;
-
+    
 
 
     struct Block_IO{
@@ -266,7 +266,7 @@ public:
                 } 
 
                 ImNodes::BeginNodeEditor();
-                block_id = block_copy.Render(1, block_memory);
+                block_id = block_copy.Render(1, 1, block_memory);
 
                 ImNodes::EndNodeEditor();
 

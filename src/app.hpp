@@ -15,7 +15,7 @@
 #include "tcp_client.hpp"
 #include "code_uploader.hpp"
 #include "status_checker.hpp"
-
+#include "exec_order.hpp"
 
 
 class App{
@@ -45,8 +45,9 @@ public:
     DebugLogger event_log;
     
     Schematic mainSchematic;
-    // std::list<std::shared_ptr<BlockData>> library;
+    ExecutionOrderWindow execution_order;
     Librarian library1;
+
 
 
     std::list<BlockEditor> block_editors;
@@ -109,7 +110,8 @@ public:
         PLC_connection_log("PLC Connection Log"),
         PLC_message_log("PLC Message Log"),
         event_log("Event Log"),
-        schematic_editor("Schematic Editor")
+        schematic_editor("Schematic Editor"),
+        execution_order("Execution Order", &mainSchematic)
     {
 
         for(int i = 0; i < argc; i++){
@@ -125,10 +127,21 @@ public:
         schematic_editor.SetSchematic(&mainSchematic);
         schematic_editor.SetLibrary(&library1);
         schematic_editor.Show(true);
+        execution_order.Show(true);
 
         event_log.Show(true);
         PLC_connection_log.Show(true);
 
+
+        execution_order.OnSelectBlock(
+            [this](std::vector<int> IDS)
+            {
+                schematic_editor.SelectBlockWithID(IDS);
+            });
+            
+            
+
+        
 
         // app_build_config.clear();
         // app_build_config["Files"] = boost::json::array{ "file1.cpp" };
@@ -159,6 +172,7 @@ public:
         PLC_message_log.Render();
         event_log.Render();
         schematic_editor.Render();
+        execution_order.Render();
 
         for(auto& editor: block_editors) editor.Render();
 
@@ -170,6 +184,8 @@ public:
 
         //if (show_PLC_connection_dialog)
         //    PLC_connection_log.PushBack(DebugLogger::Priority::ERROR, "XDDDDD");
+
+        execution_order.SetSelectedBlocksID(schematic_editor.GetSelectedBlocksID());
 
 
         ImGui::Begin("Window1");
@@ -272,7 +288,8 @@ private:
             ImGui::Separator();
             if (ImGui::MenuItem("Project Tree", nullptr, show_project_tree_window)) show_project_tree_window = !show_project_tree_window;
             ImGui::Separator();
-            if (ImGui::MenuItem("Schematic", nullptr, schematic_editor.IsShown())) schematic_editor.Show(!schematic_editor.IsShown());         
+            if (ImGui::MenuItem("Schematic", nullptr, schematic_editor.IsShown())) schematic_editor.Show(!schematic_editor.IsShown());
+            if (ImGui::MenuItem("Execution Order", nullptr, execution_order.IsShown())) execution_order.Show(!execution_order.IsShown());          
             ImGui::EndMenu();
         }
 

@@ -60,10 +60,51 @@ public:
         ImNodes::SetCurrentContext(nullptr);
     }
 
+
+    std::vector<int> GetSelectedBlocksID(){
+
+        // get list of selected blocks
+        if(!schematic) return std::vector<int>{};
+
+        ImNodes::SetCurrentContext(context);
+        ImNodes::EditorContextSet(context_editor);
+
+        std::vector<int> selected_blocks_id;
+
+        const int count = ImNodes::NumSelectedNodes();
+        std::unique_ptr<int[]> selected_imnodes_id = std::make_unique<int[]>(count);
+        ImNodes::GetSelectedNodes(selected_imnodes_id.get());
+
+        selected_blocks_id.resize(count);
+        for(int i = 0; i < count; i++){
+            selected_blocks_id[i] = BlockData::ImnodeToID(selected_imnodes_id[i]);
+        }
+
+        ImNodes::EditorContextSet(nullptr);
+        ImNodes::SetCurrentContext(nullptr);
+
+        return selected_blocks_id;
+
+    }
+
+    void SelectBlockWithID(std::vector<int> IDs){
+        ImNodes::SetCurrentContext(context);
+        ImNodes::EditorContextSet(context_editor);
+
+        ImNodes::ClearNodeSelection();
+        
+        for(int i = 0; i < IDs.size(); i++){
+            if(IDs[i] <= 0) continue;
+            ImNodes::SelectNode(BlockData::GetImnodeID(IDs[i]));
+        }
+
+
+        ImNodes::EditorContextSet(nullptr);
+        ImNodes::SetCurrentContext(nullptr);
+    }
+
+
 private:
-
-
-
 
     void GetConnectionColor(const BlockData::IO& io, ImColor* color ){
 
@@ -125,12 +166,14 @@ public:
 
             // render blocks 
             if(schematic){
+                int execution_number = 0;
                 for(auto block: schematic->Blocks()){
                     auto block_data = block->lib_block.lock();
                     
                     if(block_data){
-                        int id = block_data->Render(block->id, block->parameters);
+                        int id = block_data->Render(block->id, execution_number, block->parameters);
                     }
+                    execution_number++;
                 }
             }
 

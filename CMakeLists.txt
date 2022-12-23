@@ -73,6 +73,7 @@ add_executable(PLCEditio
             "./src/thread.hpp"
             "./src/code_uploader.hpp"
             "./src/status_checker.hpp"
+            "./src/exec_order.hpp"
             )
 
 add_subdirectory("libs/glfw")

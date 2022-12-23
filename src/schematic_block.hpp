@@ -166,7 +166,7 @@ private:
 
 public:
 
-    int Render(int id, std::vector<std::variant<std::monostate, bool, int64_t, double, std::string>>& param_memory){
+    int Render(int id, int execution_number ,std::vector<std::variant<std::monostate, bool, int64_t, double, std::string>>& param_memory){
 
         int node_id = GetImnodeID(id);
         int input_id = GetImnodeInputID(id, 0);
@@ -177,6 +177,8 @@ public:
         // Title
         // if(title.size() != 0){ // this feature does not work correctly
             ImNodes::BeginNodeTitleBar();
+            ImGui::TextColored(ImColor(150,150,200), "#%d", execution_number);
+            ImGui::SameLine();
             ImGui::TextUnformatted(title.c_str());
             ImNodes::EndNodeTitleBar();
         // }
