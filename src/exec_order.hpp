@@ -13,7 +13,6 @@ private:
     
     Schematic* schematic;
 
-    bool automatic_sort_selected = true;
     enum class DragAndDropBehaviour{Swap, Move} drag_and_drop_behaviour = DragAndDropBehaviour::Swap;
 
     std::list<std::shared_ptr<Schematic::Block>>::iterator drag_and_drop_source;
@@ -23,6 +22,10 @@ private:
     std::function<void(std::vector<int>)> on_select_callback;
 
 public:
+
+    enum class CalculationMethod{ AutoAnyChange, AutoCompileOnly, Manual };
+
+
     ExecutionOrderWindow(const std::string& name, Schematic* s): WindowObject(name), schematic(s){}
     ~ExecutionOrderWindow(){}
 
@@ -37,6 +40,9 @@ public:
         ImGui::End();
     }
 
+    CalculationMethod GetCalculationMethod(){
+        return calculation_method;
+    }
 
     void SetSelectedBlocksID(std::vector<int> selected){
         selected_blocks_id = selected;
@@ -50,17 +56,23 @@ public:
 
 private:
 
+    CalculationMethod calculation_method = CalculationMethod::AutoCompileOnly;
+
     int selected_index = -1;
 
     void WindowContent(){
 
         ImGui::Text("Set execution order:");
-        if(ImGui::RadioButton("Automaticaly", automatic_sort_selected)) automatic_sort_selected = true;
-        if(ImGui::RadioButton("Manualy", !automatic_sort_selected)) automatic_sort_selected = false;
+        if(ImGui::RadioButton("Auto (on compile)", calculation_method == CalculationMethod::AutoCompileOnly)) 
+            calculation_method = CalculationMethod::AutoCompileOnly;
+        if(ImGui::RadioButton("Auto (always - not recomended)", calculation_method == CalculationMethod::AutoAnyChange)) 
+            calculation_method = CalculationMethod::AutoAnyChange;
+        if(ImGui::RadioButton("Manualy", calculation_method == CalculationMethod::Manual)) 
+            calculation_method = CalculationMethod::Manual;
 
         ImGui::Separator();
 
-        ImGui::BeginDisabled(automatic_sort_selected);
+        ImGui::BeginDisabled(calculation_method != CalculationMethod::Manual);
         if(ImGui::RadioButton("Swap", drag_and_drop_behaviour == DragAndDropBehaviour::Swap)) drag_and_drop_behaviour = DragAndDropBehaviour::Swap;
         if(ImGui::RadioButton("Move", drag_and_drop_behaviour == DragAndDropBehaviour::Move)) drag_and_drop_behaviour = DragAndDropBehaviour::Move;
         ImGui::EndDisabled();
@@ -122,7 +134,7 @@ private:
             }
 
             // drag and drop source
-            if(!automatic_sort_selected && ImGui::BeginDragDropSource()){
+            if(!(calculation_method != CalculationMethod::Manual) && ImGui::BeginDragDropSource()){
                 ImGui::SetDragDropPayload("ExecOrderChange", nullptr, 0);
 
                 drag_and_drop_source = iter;
@@ -144,7 +156,7 @@ private:
             }
 
             // drag and drop target
-            if(!automatic_sort_selected && ImGui::BeginDragDropTarget()){
+            if(!(calculation_method != CalculationMethod::Manual) && ImGui::BeginDragDropTarget()){
                 
                 if(ImGui::AcceptDragDropPayload("ExecOrderChange")){
                     drag_and_drop_target = iter;

@@ -132,24 +132,22 @@ public:
         event_log.Show(true);
         PLC_connection_log.Show(true);
 
-
+        // update selected blocks in windows
         execution_order.OnSelectBlock(
             [this](std::vector<int> IDS)
             {
                 schematic_editor.SelectBlockWithID(IDS);
             });
-            
-            
 
-        
 
-        // app_build_config.clear();
-        // app_build_config["Files"] = boost::json::array{ "file1.cpp" };
-        // app_build_config["Includes"] = boost::json::array();
-        // app_build_config["CPP_flags"] = boost::json::array({"-Wall", "-pass-exit-codes"});
-        // app_build_config["C_flags"] = boost::json::array({ "-Wall", "-pass-exit-codes"});
-        // app_build_config["LD_flags"] = boost::json::array({ "-Wall", "-pass-exit-codes" });
-
+        schematic_editor.OnUpdateEvent(
+            [this](){
+                // update execution order on every change in schematic
+                if(execution_order.GetCalculationMethod() == ExecutionOrderWindow::CalculationMethod::AutoAnyChange){
+                    mainSchematic.SortBlocks();
+                }
+            });
+          
     };
 
     ~App(){
@@ -176,16 +174,9 @@ public:
 
         for(auto& editor: block_editors) editor.Render();
 
-        //if (show_demo_window) 
-        //    PLC_connection_log.PushBack(DebugLogger::Priority::INFO ,"XDDDDD");
 
-        //if (show_open_project_dialog)
-        //    PLC_connection_log.PushBack(DebugLogger::Priority::WARNING, "XDDDDD");
-
-        //if (show_PLC_connection_dialog)
-        //    PLC_connection_log.PushBack(DebugLogger::Priority::ERROR, "XDDDDD");
-
-        execution_order.SetSelectedBlocksID(schematic_editor.GetSelectedBlocksID());
+        // update block selection in windows
+        execution_order.SetSelectedBlocksID(schematic_editor.GetSelectedBlocksID()); 
 
 
         ImGui::Begin("Window1");
@@ -611,6 +602,9 @@ private:
 
             ImVec2 button_size = ImVec2(ImGui::GetWindowWidth(), 0);
             if (ImGui::Button("Upload and Compile", button_size)){
+                if(execution_order.GetCalculationMethod() != ExecutionOrderWindow::CalculationMethod::Manual){
+                    mainSchematic.SortBlocks();
+                }
                 produced_cpp_code = mainSchematic.BuildToCPP();
 
                 code_uploader.ClearFlags();
@@ -748,6 +742,9 @@ private:
         if (ImGui::Begin("CPP code", &show_produced_cpp_code_dialog)) {
 
             if(ImGui::Button("Rebuild code")){
+                if(execution_order.GetCalculationMethod() != ExecutionOrderWindow::CalculationMethod::Manual){
+                    mainSchematic.SortBlocks();
+                }
                 produced_cpp_code = mainSchematic.BuildToCPP();
                 produced_cpp_code_viewsize_y = ImGui::CalcTextSize( (produced_cpp_code+"\nX\nX").c_str() ).y;
             }

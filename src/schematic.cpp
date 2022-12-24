@@ -718,5 +718,150 @@ std::string Schematic::BuildToCPP(){
 }
 
 
+std::vector<Schematic::Connection> Schematic::GetAllBlockInputConnections(std::shared_ptr<Schematic::Block> block){
 
+	std::vector<Schematic::Connection> conns;
+	for(Connection conn: connetions){
+		std::shared_ptr<Schematic::Block> dst_block = conn.dst.lock();
+
+		if(!conn.IsValid()) continue;
+
+		if(dst_block)
+			if(dst_block == block)
+				conns.push_back(conn);
+	}
+
+	return conns;
+}
+
+
+
+
+void Schematic::SortBlocks(){
+
+
+	struct BlockConnGroup{
+		std::shared_ptr<Block> block;
+		std::vector<Schematic::Connection> connections;
+		BlockConnGroup(std::shared_ptr<Block> b, std::vector<Schematic::Connection> conns): block(b), connections(conns){
+			block->is_sorted = false; // clear sort flags
+		}
+
+		bool IsAllConnectedToSorted(){
+			for(int i = 0; i < connections.size(); i++){
+				auto src_block = connections[i].src.lock(); 
+				if(!src_block->is_sorted) return false;
+			}
+			return true;
+		}
+
+		bool IsAnyConnectedToSorted(){
+			for(int i = 0; i < connections.size(); i++){
+				auto src_block = connections[i].src.lock(); 
+				if(src_block->is_sorted) return true;
+			}
+			return false;
+		}
+	};
+
+	std::list<BlockConnGroup> not_sorted;
+	std::list<std::shared_ptr<Block>> sorted;
+
+	for(auto block: blocks){
+		// check if block is valid 
+		if(!block) continue;
+		if(!block->lib_block.lock()) continue;
+		not_sorted.emplace_back(block, GetAllBlockInputConnections(block));
+	}
+
+	typedef std::list<BlockConnGroup>::iterator UnsortedIter;
+
+
+	// step 1 - find blocks without any input pins
+	bool found_all = false;
+	while(!found_all){ 
+		UnsortedIter iter;
+		for(iter = not_sorted.begin(); iter != not_sorted.end(); iter++){
+			auto lib_block = iter->block->lib_block.lock();
+			if(lib_block->Inputs().empty()) break;
+		}
+
+		if(iter != not_sorted.end()){
+			sorted.push_back(iter->block);
+			sorted.back()->is_sorted = true;
+			not_sorted.erase(iter);
+			continue;
+		}
+
+		found_all = true;
+	}
+
+	 // step 2 - find block without any input connections
+	found_all = false;
+	while(!found_all){
+		UnsortedIter iter;
+		for(iter = not_sorted.begin(); iter != not_sorted.end(); iter++){
+			if(iter->connections.empty()) break;
+		}
+
+		if(iter != not_sorted.end()){
+			sorted.push_back(iter->block);
+			sorted.back()->is_sorted = true;
+			not_sorted.erase(iter);
+			continue;
+		}
+
+		found_all = true;
+	}
+
+
+	// step 3 - iterate over every step until all blocks is sorted
+	while(!not_sorted.empty()){
+
+		
+		{ // step 3.1 - find block connected with every pin to already sorted block
+			UnsortedIter iter;
+			for(iter = not_sorted.begin(); iter != not_sorted.end(); iter++){
+				if(iter->IsAllConnectedToSorted()) break;
+			}
+
+			if(iter != not_sorted.end()){
+				sorted.push_back(iter->block);
+				sorted.back()->is_sorted = true;
+				not_sorted.erase(iter);
+				continue;
+			}
+		}
+
+		{ // step 3.2 - find block connected to at least one sorted block
+			UnsortedIter iter;
+			for(iter = not_sorted.begin(); iter != not_sorted.end(); iter++){
+				if(iter->IsAnyConnectedToSorted()) break;
+			}
+
+			if(iter != not_sorted.end()){
+				sorted.push_back(iter->block);
+				sorted.back()->is_sorted = true;
+				not_sorted.erase(iter);
+				continue;
+			}
+		}
+
+		// step 3.3 - if none of blocks matches any criteria, just pick first in list 
+		// this situation should never happen
+		{ 
+			UnsortedIter iter = not_sorted.begin();
+			sorted.push_back(iter->block);
+			sorted.back()->is_sorted = true;
+			not_sorted.erase(iter);
+			continue;
+		}
+
+	}
+
+	// final step - store result in main containter
+	blocks.swap(sorted);
+
+
+}
 

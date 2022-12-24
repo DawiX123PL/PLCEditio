@@ -1,6 +1,7 @@
 #pragma once
 
 #include <imnodes.h>
+#include <functional>
 // #include <imnodes_internal.h>
 
 #include "window_object.hpp"
@@ -9,6 +10,8 @@
 
 
 class SchematicEditor: public WindowObject{
+
+    std::function<void()> on_update_callback;
 
     ImNodesEditorContext* context_editor;
     ImNodesContext* context;
@@ -40,6 +43,11 @@ public:
     void SetLibrary(Librarian* lib){
         library = lib;
         init = true;
+    }
+
+
+    void OnUpdateEvent(std::function<void()> callback){
+        on_update_callback = callback;
     }
 
 
@@ -130,6 +138,8 @@ public:
         
         if (!show) return;
 
+        bool is_updated = false;
+
         auto& io = ImGui::GetIO();
 
         ImGui::SetNextWindowSizeConstraints(ImVec2(100,100), ImVec2(1e+20,1e+20)); // set minimum size to (100, 100)
@@ -156,7 +166,8 @@ public:
                 const ImVec2 click_pos = ImGui::GetMousePosOnOpeningCurrentPopup();
                 
                 if(ImGui::BeginMenu("Add")){
-                    RenderAddPopup(library->GetLib(), click_pos);                 
+                    bool is_add = RenderAddPopup(library->GetLib(), click_pos);  
+                    if(is_add) is_updated = true;                 
                     ImGui::EndMenu();
                 }
 
@@ -235,6 +246,7 @@ public:
                         if (ImNodes::IsNodeSelected(id)) {
                             // delete selected 
                             iter = schematic->blocks.erase(iter);
+                            is_updated = true;
                         }
                         else {
                             iter++;
@@ -244,13 +256,21 @@ public:
                     // delete connections
                     for (auto iter = schematic->connetions.begin(); iter != schematic->connetions.end(); /*none*/) {
 
-                        // check if selected
+                        
                         auto conn = *iter;
-                        if (ImNodes::IsLinkSelected(conn.id)) {
+                        // check if selected
+                        if (ImNodes::IsLinkSelected(conn.id)) { 
                             // delete selected 
                             iter = schematic->connetions.erase(iter);
+                            is_updated = true;
                         }
-                        else {
+                        // check if valid
+                        else if(!conn.IsValid()){
+                            // delete invalid 
+                            iter = schematic->connetions.erase(iter);
+                            is_updated = true;
+                        }
+                        else{
                             iter++;
                         }
                     }
@@ -284,6 +304,7 @@ public:
                             BlockData::ImnodeToID(dst_id),
                             BlockData::ImnodeToInputID(dst_id)
                         );
+                        is_updated = true;
                     }
                 }
                 // This migth be useful in checking if new link source and destination have same data type
@@ -302,11 +323,16 @@ public:
 
         }
         ImGui::End();
+
+        // call function if anything has been updated
+        if(is_updated) on_update_callback();
             
     }
 
 private:
-    void RenderAddPopup(Librarian::Library& lib, const ImVec2 click_pos){
+    bool RenderAddPopup(Librarian::Library& lib, const ImVec2 click_pos){
+
+        bool is_added = false;
 
         for(auto& sub_lib: lib.sub_libraries){
             
@@ -322,10 +348,11 @@ private:
                 // ADD BLOCK to schematic     
                 auto b = schematic->CreateBlock(block, 0, 0);
                 ImNodes::SetNodeScreenSpacePos(BlockData::GetImnodeID(b->id), click_pos);
+                is_added = true;
             }
         }
 
-
+        return is_added;
     } 
 
 

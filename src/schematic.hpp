@@ -18,6 +18,8 @@ class Schematic {
 public:
 
 	struct Block {
+		bool is_sorted;
+
 		std::weak_ptr<BlockData> lib_block;
 		int id;
 		std::string full_name;
@@ -205,7 +207,14 @@ private:
 	}
 
 
+	std::vector<Connection> GetAllBlockInputConnections(std::shared_ptr<Block>);
+
+	
+
 public:
+
+
+	void SortBlocks();
 
 
 	bool CreateConnection(int src_id, int src_pin, int dst_id, int dst_pin){
