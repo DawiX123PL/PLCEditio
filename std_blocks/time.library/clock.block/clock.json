@@ -1,0 +1,1 @@
+{"title":"Clock","inputs":[{"label":"EN","type":"bool"}],"parameters":[{"label":"EN","type":"bool"},{"label":"Sec","type":"int64_t"}],"outputs":[{"label":"tick","type":"bool"},{"label":"1/2","type":"bool"}]}

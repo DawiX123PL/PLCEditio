@@ -1,0 +1,1 @@
+{"title":"delay","inputs":[{"label":"EN","type":"bool"},{"label":"In","type":"bool"}],"parameters":[{"label":"EN","type":"bool"},{"label":"Sec","type":"int64_t"},{"label":"Rise","type":"bool"},{"label":"Fall","type":"bool"}],"outputs":[{"label":"","type":"bool"}]}

@@ -1,0 +1,1 @@
+{"title":"RS","inputs":[{"label":"S","type":"bool"},{"label":"R","type":"bool"}],"parameters":[],"outputs":[{"label":"Q","type":"bool"},{"label":"nQ","type":"bool"}]}

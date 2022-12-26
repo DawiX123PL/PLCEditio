@@ -1,0 +1,1 @@
+{"title":"D","inputs":[{"label":"D","type":"bool"},{"label":"clk","type":"bool"}],"parameters":[],"outputs":[{"label":"Q","type":"bool"},{"label":"nQ","type":"bool"}]}
