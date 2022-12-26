@@ -55,7 +55,7 @@ int ShowStatusBar(StatusChecker::AppStatus app_status) {
             case StatusChecker::AppStatus::_STOPPED:      ImGui::TextColored(ImColor(255,0,0), "Stoppped"); break;
             }
         ImGui::TableSetColumnIndex(3);
-            ImGui::Text("Witam Pana 1234567890");
+            ImGui::Text("PLC Editio, version: 0.0.1 Compilation Time: " __TIME__ " " __DATE__);
 
     ImGui::EndTable();
 

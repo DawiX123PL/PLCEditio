@@ -167,6 +167,7 @@ public:
             is_std_block = false;
         }
 
+        LoadCode();
 
     }
 
@@ -242,233 +243,32 @@ public:
         ImGuiWindowFlags flags = no_saved ? ImGuiWindowFlags_UnsavedDocument : 0;
         if(ImGui::Begin(window_name.c_str(), &show, flags)){
 
-            // block preview
-            if(ImGui::Checkbox("Show Preview", &show_prewiev)) show_prewiev != show_prewiev;
-            if(show_prewiev){ 
-
-                ImGui::BeginChild(1, ImVec2(ImGui::GetWindowWidth(), 200));
-                ImNodes::SetCurrentContext(context);
-                ImNodes::EditorContextSet(context_editor);
-
-                if(ImGui::Button("Center block") || center_on_start){
-                    if(block_id > 0){
-                        ImVec2 block_pos = ImNodes::GetNodeGridSpacePos(block_id);
-                        ImVec2 block_size = ImNodes::GetNodeDimensions(block_id);
-                        ImVec2 editor_size = ImGui::GetWindowSize();
-                        ImVec2 pos = ImVec2(
-                            - block_pos.x - block_size.x / 2 + editor_size.x / 2,
-                            - block_pos.y - block_size.y / 2 + editor_size.y / 2
-                        );
-                        ImNodes::EditorContextResetPanning(pos);
-                        center_on_start = false;
-                    }
-                    
-                } 
-
-                ImNodes::BeginNodeEditor();
-                block_id = block_copy.Render(1, 1, block_memory);
-
-                ImNodes::EndNodeEditor();
-
-                ImNodes::EditorContextSet(nullptr);
-                ImNodes::SetCurrentContext(nullptr);
-                ImGui::EndChild();
+            if(ImGui::BeginTabBar("EditorMode")){
+                if(ImGui::BeginTabItem("Properties")){
+                    RenderPropertiesEditorContent();
+                    ImGui::EndTabItem();
+                }
+                if(ImGui::BeginTabItem("Code")){
+                    PreprocessComputedCode();
+                    RenderCodeEditorContent();
+                    ImGui::EndTabItem();
+                }
+                ImGui::EndTabBar();
             }
-            ImGui::Separator();
-            
-            { // block edition
-                ImGui::BeginChild(2);
-
-                if(is_std_block)
-                    ImGui::TextColored(ImColor(255,255,0), "STD block cannot be modified");
-
-                std::string title = block_copy.Title();
-
-                ImGui::BeginDisabled(is_std_block);
-                    if(ImGui::InputText("Name", &title))no_saved = true;
-                    block_copy.SetTitle(title);
-                ImGui::EndDisabled();
-
-
-                ImGui::BeginDisabled(is_std_block);
-                if(ImGui::InputInt("Inputs count", &inputs_count, 1, 1)){
-                    no_saved = true;
-                    inputs_count = inputs_count > 0 ? inputs_count : 0;
-                    inputs_count = inputs_count < io_count_limit ? inputs_count : io_count_limit;
-                }
-                ImGui::EndDisabled();
-
-
-                { // Inputs 
-                    if(inputs_count != inputs_types.size()) inputs_types.resize(inputs_count);
-
-                    if(ImGui::TreeNode("Inputs")){
-                        for(int i = 0; i < inputs_types.size(); i++){
-                            ImGui::PushID(i);
-
-                            if(ImGui::TreeNode(&i, "input %d", i)){
-                                ImGui::BeginDisabled(is_std_block);
-                                    ImGui::InputText("Label", &inputs_types[i].label);
-
-                                    int type = (int)inputs_types[i].type;
-                                    if(ImGui::Combo("Type", &type,Block_IO::names, Block_IO::names_count)){
-                                        inputs_types[i].SetType((Block_IO::Type)type);
-                                    }
-
-                                    if(inputs_types[i].type == Block_IO::Type::USER_TYPE){
-                                        ImGui::InputText("##UserType", &inputs_types[i].type_str, ImGuiInputTextFlags_CharsNoBlank);
-                                    }
-
-                                ImGui::EndDisabled();
-                                ImGui::TreePop();
-                            }
-
-                            ImGui::PopID();
-                        }
-                        ImGui::TreePop();
-                    }
-                } // End Inputs 
-
-
-                ImGui::BeginDisabled(is_std_block);
-                if(ImGui::InputInt("Parameters count", &parameters_count, 1, 1)){
-                    no_saved = true;
-                    parameters_count = parameters_count > 0 ? parameters_count : 0;
-                    parameters_count = parameters_count < io_count_limit ? parameters_count : io_count_limit;
-                }
-                ImGui::EndDisabled();
-
-
-                { // Parameters 
-                    if(parameters_count != parameters_types.size()) parameters_types.resize(parameters_count);
-
-                    if(ImGui::TreeNode("parameters")){
-                        for(int i = 0; i < parameters_types.size(); i++){
-                            ImGui::PushID(i);
-
-                            if(ImGui::TreeNode(&i, "input %d", i)){
-                                ImGui::BeginDisabled(is_std_block);
-                                    ImGui::InputText("Label", &parameters_types[i].label);
-
-                                    int type = (int)parameters_types[i].type;
-                                    if(ImGui::Combo("Type", &type,Block_IO::names, Block_IO::names_count)){
-                                        parameters_types[i].SetType((Block_IO::Type)type);
-                                    }
-
-                                    if(parameters_types[i].type == Block_IO::Type::USER_TYPE){
-                                        ImGui::InputText("##UserType", &parameters_types[i].type_str, ImGuiInputTextFlags_CharsNoBlank);
-                                    }
-
-                                ImGui::EndDisabled();
-                                ImGui::TreePop();
-                            }
-
-                            ImGui::PopID();
-                        }
-                        ImGui::TreePop();
-                    }
-                } // End Parameters 
-
-
-                ImGui::BeginDisabled(is_std_block);
-                if(ImGui::InputInt("Output count", &outputs_count, 1, 1)){
-                    no_saved = true;
-                    outputs_count = outputs_count > 0 ? outputs_count : 0;
-                    outputs_count = outputs_count < io_count_limit ? outputs_count : io_count_limit;
-                }
-                ImGui::EndDisabled();
-
-
-                { // Outputs 
-                    if(outputs_count != outputs_types.size()) outputs_types.resize(outputs_count);
-
-                    if(ImGui::TreeNode("Outputs")){
-                        for(int i = 0; i < outputs_types.size(); i++){
-                            ImGui::PushID(i);
-
-                            if(ImGui::TreeNode(&i, "output %d", i)){
-                                ImGui::BeginDisabled(is_std_block);
-                                    ImGui::InputText("Label", &outputs_types[i].label);
-                                    
-                                    int type = (int)outputs_types[i].type;
-                                    if(ImGui::Combo("Type", &type,Block_IO::names, Block_IO::names_count)){
-                                        outputs_types[i].SetType((Block_IO::Type)type);
-                                    }
-
-                                    if(outputs_types[i].type == Block_IO::Type::USER_TYPE){
-                                        ImGui::InputText("##UserType", &outputs_types[i].type_str, ImGuiInputTextFlags_CharsNoBlank);
-                                    }
-
-
-                                ImGui::EndDisabled();
-                                ImGui::TreePop();
-                            }
-
-                            ImGui::PopID();
-                        }
-                        ImGui::TreePop();
-                    }
-                } // End Outputs
-
-                InternalIOsToBlock(&block_copy);
-
-                ImGui::Separator();
-
-                if(ImGui::Button("Edit Code", ImVec2(ImGui::GetWindowWidth(), 0))){ 
-
-                    std::string code;
-                    BlockData::Error err = block_copy.ReadCode(&code);
-
-                    if(err == BlockData::Error::OK){
-                        // convert '\r' -> '\n' for simplicity
-                        boost::replace_all(code, "\r", "\n");
-                        PreprocessUserCode(code);
-                    }else{
-                        PreprocessUserCode("");
-                    }
-                    is_code_loaded = true;
-                    show_code_editor = true;
-                }
-
-                ImGui::Separator();
-                {
-                    if(ImGui::Button("Close", ImVec2(ImGui::GetWindowWidth()/3, 0))) show = false;
-                    
-                    ImGui::BeginDisabled(is_std_block);
-                    ImGui::SameLine();
-                    if(ImGui::Button("Save", ImVec2(ImGui::GetWindowWidth()/3, 0))){
-                        SaveBlock();
-                    } 
-
-                    ImGui::SameLine();
-                    if(ImGui::Button("Delete", ImVec2(ImGui::GetWindowWidth()/3, 0))){
-                        auto block_ptr = block.lock();
-                        if(block_ptr){
-                            show_delete_block_popup = true;
-                            
-                            delete_button_timeout = std::chrono::high_resolution_clock::now() + std::chrono::seconds(7);
-                        }
-                    } 
-                    ImGui::EndDisabled();
-                }
-
-                ImGui::EndChild();
-            }
-
+           
         }
 
         ImGui::End();
 
         if(show_delete_block_popup)
-            DeleteBlockPopup();
-
-        if(show_code_editor)
-            RenderCodeEditor();
+            DeleteBlockPopup();   
     }
 
 private:
 
     void SaveBlock(){
+        if(is_std_block) return;
+        
         auto block_ptr = block.lock();
         if(block_ptr && !is_std_block){
             *block_ptr = block_copy;
@@ -484,85 +284,294 @@ private:
         }
     }
 
-    void RenderCodeEditor(){
-        if(!show_code_editor) return;
+    void RenderPropertiesEditorContent(){
 
-        PreprocessComputedCode();
+        // block preview
+        if(ImGui::Checkbox("Show Preview", &show_prewiev)) show_prewiev != show_prewiev;
+        if(show_prewiev){ 
 
+            ImGui::BeginChild(1, ImVec2(ImGui::GetWindowWidth(), 200));
+            ImNodes::SetCurrentContext(context);
+            ImNodes::EditorContextSet(context_editor);
 
-        ImGuiWindowFlags flags = 0;
-        if(no_saved) flags += ImGuiWindowFlags_UnsavedDocument;
+            if(ImGui::Button("Center block") || center_on_start){
+                if(block_id > 0){
+                    ImVec2 block_pos = ImNodes::GetNodeGridSpacePos(block_id);
+                    ImVec2 block_size = ImNodes::GetNodeDimensions(block_id);
+                    ImVec2 editor_size = ImGui::GetWindowSize();
+                    ImVec2 pos = ImVec2(
+                        - block_pos.x - block_size.x / 2 + editor_size.x / 2,
+                        - block_pos.y - block_size.y / 2 + editor_size.y / 2
+                    );
+                    ImNodes::EditorContextResetPanning(pos);
+                    center_on_start = false;
+                }
+                
+            } 
 
-        if(ImGui::Begin(code_editor_name.c_str(), &show_code_editor, flags)){
+            ImNodes::BeginNodeEditor();
+            block_id = block_copy.Render(1, 1, block_memory);
 
+            ImNodes::EndNodeEditor();
 
-            ImVec2 button_size = ImVec2(ImGui::GetWindowWidth()/2, 0);
-            if(ImGui::Button("Close", button_size)) show = false;
+            ImNodes::EditorContextSet(nullptr);
+            ImNodes::SetCurrentContext(nullptr);
+            ImGui::EndChild();
+        }
+        ImGui::Separator();
+        
+        { // block edition
+            ImGui::BeginChild(2);
 
-            ImGui::SameLine();
+            if(is_std_block)
+                ImGui::TextColored(ImColor(255,255,0), "STD block cannot be modified");
+
+            std::string title = block_copy.Title();
 
             ImGui::BeginDisabled(is_std_block);
-            if(ImGui::Button("Save", button_size)){
-                SaveBlock();
+                if(ImGui::InputText("Name", &title))no_saved = true;
+                block_copy.SetTitle(title);
+            ImGui::EndDisabled();
+
+
+            ImGui::BeginDisabled(is_std_block);
+            if(ImGui::InputInt("Inputs count", &inputs_count, 1, 1)){
+                no_saved = true;
+                inputs_count = inputs_count > 0 ? inputs_count : 0;
+                inputs_count = inputs_count < io_count_limit ? inputs_count : io_count_limit;
             }
             ImGui::EndDisabled();
 
-            if(is_std_block){
-                ImGui::TextColored(ImColor(255,255,0), "STD Block cannot be modified");
+
+            { // Inputs 
+                if(inputs_count != inputs_types.size()) inputs_types.resize(inputs_count);
+
+                if(ImGui::TreeNode("Inputs")){
+                    for(int i = 0; i < inputs_types.size(); i++){
+                        ImGui::PushID(i);
+
+                        if(ImGui::TreeNode(&i, "input %d", i)){
+                            ImGui::BeginDisabled(is_std_block);
+                                ImGui::InputText("Label", &inputs_types[i].label);
+
+                                int type = (int)inputs_types[i].type;
+                                if(ImGui::Combo("Type", &type,Block_IO::names, Block_IO::names_count)){
+                                    inputs_types[i].SetType((Block_IO::Type)type);
+                                }
+
+                                if(inputs_types[i].type == Block_IO::Type::USER_TYPE){
+                                    ImGui::InputText("##UserType", &inputs_types[i].type_str, ImGuiInputTextFlags_CharsNoBlank);
+                                }
+
+                            ImGui::EndDisabled();
+                            ImGui::TreePop();
+                        }
+
+                        ImGui::PopID();
+                    }
+                    ImGui::TreePop();
+                }
+            } // End Inputs 
+
+
+            ImGui::BeginDisabled(is_std_block);
+            if(ImGui::InputInt("Parameters count", &parameters_count, 1, 1)){
+                no_saved = true;
+                parameters_count = parameters_count > 0 ? parameters_count : 0;
+                parameters_count = parameters_count < io_count_limit ? parameters_count : io_count_limit;
+            }
+            ImGui::EndDisabled();
+
+
+            { // Parameters 
+                if(parameters_count != parameters_types.size()) parameters_types.resize(parameters_count);
+
+                if(ImGui::TreeNode("parameters")){
+                    for(int i = 0; i < parameters_types.size(); i++){
+                        ImGui::PushID(i);
+
+                        if(ImGui::TreeNode(&i, "input %d", i)){
+                            ImGui::BeginDisabled(is_std_block);
+                                ImGui::InputText("Label", &parameters_types[i].label);
+
+                                int type = (int)parameters_types[i].type;
+                                if(ImGui::Combo("Type", &type,Block_IO::names, Block_IO::names_count)){
+                                    parameters_types[i].SetType((Block_IO::Type)type);
+                                }
+
+                                if(parameters_types[i].type == Block_IO::Type::USER_TYPE){
+                                    ImGui::InputText("##UserType", &parameters_types[i].type_str, ImGuiInputTextFlags_CharsNoBlank);
+                                }
+
+                            ImGui::EndDisabled();
+                            ImGui::TreePop();
+                        }
+
+                        ImGui::PopID();
+                    }
+                    ImGui::TreePop();
+                }
+            } // End Parameters 
+
+
+            ImGui::BeginDisabled(is_std_block);
+            if(ImGui::InputInt("Output count", &outputs_count, 1, 1)){
+                no_saved = true;
+                outputs_count = outputs_count > 0 ? outputs_count : 0;
+                outputs_count = outputs_count < io_count_limit ? outputs_count : io_count_limit;
+            }
+            ImGui::EndDisabled();
+
+
+            { // Outputs 
+                if(outputs_count != outputs_types.size()) outputs_types.resize(outputs_count);
+
+                if(ImGui::TreeNode("Outputs")){
+                    for(int i = 0; i < outputs_types.size(); i++){
+                        ImGui::PushID(i);
+
+                        if(ImGui::TreeNode(&i, "output %d", i)){
+                            ImGui::BeginDisabled(is_std_block);
+                                ImGui::InputText("Label", &outputs_types[i].label);
+                                
+                                int type = (int)outputs_types[i].type;
+                                if(ImGui::Combo("Type", &type,Block_IO::names, Block_IO::names_count)){
+                                    outputs_types[i].SetType((Block_IO::Type)type);
+                                }
+
+                                if(outputs_types[i].type == Block_IO::Type::USER_TYPE){
+                                    ImGui::InputText("##UserType", &outputs_types[i].type_str, ImGuiInputTextFlags_CharsNoBlank);
+                                }
+
+
+                            ImGui::EndDisabled();
+                            ImGui::TreePop();
+                        }
+
+                        ImGui::PopID();
+                    }
+                    ImGui::TreePop();
+                }
+            } // End Outputs
+
+            InternalIOsToBlock(&block_copy);
+
+            // ImGui::Separator();
+
+            // if(ImGui::Button("Edit Code", ImVec2(ImGui::GetWindowWidth(), 0))){ 
+            //     LoadCode();
+            // }
+
+            ImGui::Separator();
+            {
+                if(ImGui::Button("Close", ImVec2(ImGui::GetWindowWidth()/3, 0))) show = false;
+                
+                ImGui::BeginDisabled(is_std_block);
+                ImGui::SameLine();
+                if(ImGui::Button("Save", ImVec2(ImGui::GetWindowWidth()/3, 0))){
+                    SaveBlock();
+                } 
+
+                ImGui::SameLine();
+                if(ImGui::Button("Delete", ImVec2(ImGui::GetWindowWidth()/3, 0))){
+                    auto block_ptr = block.lock();
+                    if(block_ptr){
+                        show_delete_block_popup = true;
+                        
+                        delete_button_timeout = std::chrono::high_resolution_clock::now() + std::chrono::seconds(7);
+                    }
+                } 
+                ImGui::EndDisabled();
             }
 
-
-            ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
-            
-
-            ImGui::BeginChild("##CODE");
-                ImGui::BeginDisabled(is_std_block);
-
-                
-                auto DisplayCode = 
-                    [this](const char* id_str, bool read_only, BlockCode::Text& text)
-                    {
-                        ImGuiInputTextFlags flags = ImGuiInputTextFlags_AllowTabInput;
-                        if(read_only)
-                        {
-                            flags |= ImGuiInputTextFlags_ReadOnly;
-                            ImGui::PushStyleColor(ImGuiCol_FrameBg, (ImVec4)ImColor(0, 0, 0, 0));
-                        }
-                        if(ImGui::InputTextMultiline(id_str, &text.str, text.GetSize(), flags)){
-                            text.CalcSize();
-                            no_saved = true;   
-                        }
-                        if(read_only){
-                            ImGui::PopStyleColor();
-                        }
-                    };
-
-
-
-                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(ImGui::GetStyle().FramePadding.x, 0));
-                ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
-
-                DisplayCode("##user_include",          false, block_code.user_include);
-                DisplayCode("##r_class_prolog",        true,  block_code.r_class_prolog);
-                DisplayCode("##user_functions",        false, block_code.user_functions);
-                DisplayCode("##r_init_func_prolog",    true,  block_code.r_init_func_prolog);
-                DisplayCode("##user_init_func_body",   false, block_code.user_init_func_body);
-                DisplayCode("##r_update_func_prolog",  true,  block_code.r_update_func_prolog);
-                DisplayCode("##user_update_func_body", false, block_code.user_update_func_body);
-                DisplayCode("##r_class_epilog",        true,  block_code.r_class_epilog);
-
-                ImGui::PopStyleVar(2);
-
-
-                ImGui::EndDisabled();
-
             ImGui::EndChild();
-            ImGui::PopStyleColor();
-
         }
-        ImGui::End();
-
     }
+
+
+    void RenderCodeEditorContent(){
+
+
+        ImVec2 button_size = ImVec2(ImGui::GetWindowWidth()/2, 0);
+        if(ImGui::Button("Close", button_size)) show = false;
+
+        ImGui::SameLine();
+
+        ImGui::BeginDisabled(is_std_block);
+        if(ImGui::Button("Save", button_size)){
+            SaveBlock();
+        }
+        ImGui::EndDisabled();
+
+        if(is_std_block){
+            ImGui::TextColored(ImColor(255,255,0), "STD Block cannot be modified");
+        }
+
+
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
+        
+
+        ImGui::BeginChild("##CODE");
+            //ImGui::BeginDisabled(is_std_block);
+
+            
+            auto DisplayCode = 
+                [this](const char* id_str, bool read_only, BlockCode::Text& text)
+                {
+                    ImGuiInputTextFlags flags = ImGuiInputTextFlags_AllowTabInput;
+
+                    if(read_only || is_std_block) flags |= ImGuiInputTextFlags_ReadOnly;
+                    if(read_only) ImGui::PushStyleColor(ImGuiCol_FrameBg, (ImVec4)ImColor(0, 0, 0, 0));
+
+                    if(ImGui::InputTextMultiline(id_str, &text.str, text.GetSize(), flags)){
+                        text.CalcSize();
+                        no_saved = true;   
+                    }
+
+                    if(read_only) ImGui::PopStyleColor();
+                };
+
+
+
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(ImGui::GetStyle().FramePadding.x, 0));
+            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+            
+            DisplayCode("##user_include",          false, block_code.user_include);
+            DisplayCode("##r_class_prolog",        true,  block_code.r_class_prolog);
+            DisplayCode("##user_functions",        false, block_code.user_functions);
+            DisplayCode("##r_init_func_prolog",    true,  block_code.r_init_func_prolog);
+            DisplayCode("##user_init_func_body",   false, block_code.user_init_func_body);
+            DisplayCode("##r_update_func_prolog",  true,  block_code.r_update_func_prolog);
+            DisplayCode("##user_update_func_body", false, block_code.user_update_func_body);
+            DisplayCode("##r_class_epilog",        true,  block_code.r_class_epilog);
+
+            ImGui::PopStyleVar(2);
+
+
+            //ImGui::EndDisabled();
+
+        ImGui::EndChild();
+        ImGui::PopStyleColor();
+    }
+
+
+
+    void LoadCode(){
+        std::string code;
+        BlockData::Error err = block_copy.ReadCode(&code);
+
+        if(err == BlockData::Error::OK){
+            // convert '\r' -> '\n' for simplicity
+            boost::replace_all(code, "\r", "\n");
+            PreprocessUserCode(code);
+            PreprocessComputedCode();
+        }else{
+            PreprocessUserCode("");
+            PreprocessComputedCode();
+        }
+        is_code_loaded = true;
+    }
+
 
 
     void PreprocessUserCode(const std::string& code){
