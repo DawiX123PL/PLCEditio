@@ -37,6 +37,7 @@ public:
 
     bool show_compilation_errors_dialog = false;
     bool show_produced_cpp_code_dialog = false;
+    bool show_produced_cpp_code_save_popup = false;
     bool show_compilation_flags_editor_dialog = false;
 
 
@@ -101,7 +102,9 @@ public:
 
     AppBuildConfig app_build_config;
     std::string produced_cpp_code;
+    std::string produced_cpp_code_save_path;
     float produced_cpp_code_viewsize_y;
+
 
 
     App(int _argc, char** _argv) :
@@ -202,6 +205,9 @@ public:
         if (show_save_project_dialog)
             SaveProjectAsDialog();
 
+        if(show_produced_cpp_code_dialog)
+            CppCodeDisplayWindow();
+            
 
         // get events from PLC client
         {
@@ -280,7 +286,8 @@ private:
             if (ImGui::MenuItem("Project Tree", nullptr, show_project_tree_window)) show_project_tree_window = !show_project_tree_window;
             ImGui::Separator();
             if (ImGui::MenuItem("Schematic", nullptr, schematic_editor.IsShown())) schematic_editor.Show(!schematic_editor.IsShown());
-            if (ImGui::MenuItem("Execution Order", nullptr, execution_order.IsShown())) execution_order.Show(!execution_order.IsShown());          
+            if (ImGui::MenuItem("Execution Order", nullptr, execution_order.IsShown())) execution_order.Show(!execution_order.IsShown());
+            if (ImGui::MenuItem("C++ code", nullptr, show_produced_cpp_code_dialog)) show_produced_cpp_code_dialog = !show_produced_cpp_code_dialog;
             ImGui::EndMenu();
         }
 
@@ -317,18 +324,23 @@ private:
             ImGui::Text("Enter project path");
             ImGui::InputText("Path", &open_project_file_path);
 
-            bool can_save = true;
+            bool can_open = true;
 
             if(open_project_file_path.empty()){
                 ImGui::TextColored(ImColor(255,0,0), "Path Cannot be empty");
-                can_save = false;
+                can_open = false;
+            }
+            std::filesystem::path open_path = open_project_file_path;
+            if(open_path.is_relative()){
+                ImGui::TextColored(ImColor(255,0,0), "Path must be absolute");
+                can_open = false;
             }
        
             ImGui::Separator();
             if(ImGui::Button("Cancel", ImVec2(ImGui::GetWindowSize().x*0.5f, 20))) show_open_project_dialog = false;
             
             ImGui::SameLine();
-            ImGui::BeginDisabled(!can_save);
+            ImGui::BeginDisabled(!can_open);
             if (ImGui::Button("Open", ImVec2(ImGui::GetWindowSize().x*0.5f, 20))) {
                 LoadProj(open_project_file_path);
                 show_open_project_dialog = false;
@@ -692,12 +704,6 @@ private:
                 CompilationErrorWindow();
             }
 
-            
-            // show show produced cpp code in separate window
-            if(show_produced_cpp_code_dialog){
-                CppCodeDisplayWindow();
-            }
-
         }
 
         ImGui::Separator();
@@ -739,14 +745,20 @@ private:
 
     void CppCodeDisplayWindow(){
     
-        if (ImGui::Begin("CPP code", &show_produced_cpp_code_dialog)) {
+        if (ImGui::Begin("C++ code", &show_produced_cpp_code_dialog)) {
 
-            if(ImGui::Button("Rebuild code")){
+            if(ImGui::Button("Rebuild code", ImVec2(ImGui::GetWindowWidth()/2,0))){
                 if(execution_order.GetCalculationMethod() != ExecutionOrderWindow::CalculationMethod::Manual){
                     mainSchematic.SortBlocks();
                 }
                 produced_cpp_code = mainSchematic.BuildToCPP();
                 produced_cpp_code_viewsize_y = ImGui::CalcTextSize( (produced_cpp_code+"\nX\nX").c_str() ).y;
+            }
+
+            ImGui::SameLine();
+
+            if(ImGui::Button("Save", ImVec2(ImGui::GetWindowWidth()/2,0))){
+                show_produced_cpp_code_save_popup = true;
             }
 
             ImGui::TextColored(ImColor(255,255,0), "Code is read only");
@@ -762,7 +774,99 @@ private:
             ImGui::EndChild();
         }
         ImGui::End();
+
+
+
+        // save code modal
+        if (show_produced_cpp_code_save_popup) {
+            ImGui::OpenPopup("Save C++ code", ImGuiWindowFlags_AlwaysAutoResize);
+            ImGui::SetNextWindowPos(ImGui::GetWindowViewport()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+            if(ImGui::BeginPopupModal("Save C++ code", &show_produced_cpp_code_save_popup)){
+
+                ImGui::Text("Enter new file path:");
+                ImGui::InputText("Path", &produced_cpp_code_save_path);
+
+                std::filesystem::path path = produced_cpp_code_save_path;
+                if(path.is_relative()) path = std::filesystem::path(open_project_file_path).parent_path() / path;
+                ImGui::Text("File will be saved at:");
+                ImGui::Indent();
+                ImGui::Text(path.string().c_str());
+                ImGui::Unindent();
+
+                if(std::filesystem::exists(path)){
+                    ImGui::TextColored(ImColor(255,255,0), "File with that name already exists");
+                    ImGui::TextColored(ImColor(255,255,0), "Saving will override existing file.");
+                }
+
+                bool can_save = true;
+                if(produced_cpp_code_save_path.empty()){
+                    can_save = false;
+                    ImGui::TextColored(ImColor(255,0,0), "Path cannot be empty");
+                }
+
+                if(path.is_relative()){
+                    can_save = false;
+                    ImGui::TextColored(ImColor(255,0,0), "Path must be absolute");
+                }
+
+                if(!std::filesystem::exists(path.parent_path())){
+                    can_save = false;
+                    ImGui::TextColored(ImColor(255,0,0), "Target directory must exist");
+                }
+
+                if(!std::filesystem::is_directory(path.parent_path())){
+                    can_save = false;
+                    ImGui::TextColored(ImColor(255,0,0), "Destination must be existing folder");
+                }
+
+                if(ImGui::Button("Cancel", ImVec2(ImGui::GetWindowWidth()/2,0))) 
+                    show_produced_cpp_code_save_popup = false;
+
+                ImGui::SameLine();
+
+                ImGui::BeginDisabled(!can_save);
+                if(ImGui::Button("Save", ImVec2(ImGui::GetWindowWidth()/2,0))){
+                    SaveProducedCPPcode();
+                    show_produced_cpp_code_save_popup = false;
+                }
+                ImGui::EndDisabled();
+
+                ImGui::EndPopup();
+            }
+        }
     
+    }
+
+
+    void SaveProducedCPPcode(){
+        std::filesystem::path path = produced_cpp_code_save_path;
+        if(path.is_relative()) path = std::filesystem::path(open_project_file_path).parent_path() / path;
+
+        if(!std::filesystem::exists(path.parent_path())){
+            event_log.PushBack(DebugLogger::Priority::_ERROR, "Cannot save C++ code at: " + path.string());
+            return;
+        }
+        if(!std::filesystem::is_directory(path.parent_path())){
+            event_log.PushBack(DebugLogger::Priority::_ERROR, "Cannot save C++ code at: " + path.string());
+            return;
+        }
+
+        std::fstream file(path, std::ios::out | std::ios::binary);
+
+        if(file.bad() || !file.good()){
+            event_log.PushBack(DebugLogger::Priority::_ERROR, "Cannot save C++ code at: " + path.string());
+            return;
+        }
+
+        file.write(produced_cpp_code.c_str(), produced_cpp_code.size());
+        file.close();
+
+        if(file.bad() || !file.good()){
+            event_log.PushBack(DebugLogger::Priority::_ERROR, "Cannot save C++ code at: " + path.string());
+            return;
+        }
+
+        event_log.PushBack(DebugLogger::Priority::_SUCCESS, "Saved C++ code at: " + path.string());
     }
 
 
