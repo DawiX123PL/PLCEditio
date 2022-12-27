@@ -469,7 +469,7 @@ std::string Schematic::BuildToCPP(){
 				auto inputs = block_lib->Inputs();
 				for(int i = 0; i < inputs.size(); i++){
 					r_class_prolog +=
-					"    " + inputs[i].type + "* input" + std::to_string(i) + ";\n";
+					"    const " + inputs[i].type + "* input" + std::to_string(i) + ";\n";
 				}
 
 				auto parameters = block_lib->Parameters();
@@ -543,8 +543,25 @@ std::string Schematic::BuildToCPP(){
 		blocks_cpp_update.push_back(update_call);
 	}
 
+
+	// step 4 - temporary assing nullptr to all inputs
+	std::list<std::string> block_inputs;
+	for(const auto& block: blocks){
+		auto lib_block = block->lib_block.lock();
+		if(!lib_block) continue;
+		const int count = lib_block->Inputs().size();
+
+		std::string block_name = "block_" + std::to_string(block->id);
+
+		for(int i = 0; i < count; i++){
+			std::string input_name = "input" + std::to_string(i);
+			std::string assign_null = block_name + "." + input_name + " = nullptr;";
+			block_inputs.push_back(assign_null);
+		}
+	}
+
 	std::list<std::string> connections_cpp;
-	// step 4 - create connections between blocks;
+	// step 5 - create connections between blocks;
 	for(const auto& conn: connetions){
 		auto src = conn.src.lock();
 		auto dst = conn.dst.lock();
@@ -562,7 +579,7 @@ std::string Schematic::BuildToCPP(){
 	}
 
 	std::list<std::string> parameters_cpp;
-	// step 5 - setup parameters
+	// step 6 - setup parameters
 	for(const auto& block: blocks){
 
 
@@ -645,7 +662,7 @@ std::string Schematic::BuildToCPP(){
 	}
 
 
-	// step 6 - merge all code
+	// step 7 - merge all code
 
 	std::string code = 
 	"#include <string>\n"
@@ -668,6 +685,12 @@ std::string Schematic::BuildToCPP(){
 
 	for(std::string& object: blocks_cpp_objects)
 		code += "    " + object + "\n";
+
+	code += 
+	"\n\n";
+
+	for(std::string& inputs: block_inputs)
+		code += "    " + inputs + "\n";
 
 	code += 
 	"\n\n"

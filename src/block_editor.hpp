@@ -597,8 +597,8 @@ private:
         //          
         //              class test_block{ 
         //              public: 
-        //                  double* input0;
-        //                  double* input1;
+        //                  const double* input0;
+        //                  const double* input1;
         //                  double  output0;
         //          
         //          //////****** begin functions ******//////
@@ -629,7 +629,7 @@ private:
             auto inputs = block_copy.Inputs();
             for(int i = 0; i < inputs.size(); i++){
                 block_code.r_class_prolog.str +=
-                "    " + inputs[i].type + "* input" + std::to_string(i) + ";\n";
+                "    const " + inputs[i].type + "* input" + std::to_string(i) + ";\n";
             }
 
             auto parameters = block_copy.Parameters();
