@@ -30,7 +30,12 @@ public:
     void update(){
 //////****** begin update ******//////
 		
-		bool is_enabled = parameter0 || (*input0);
+		// enable flags
+		bool en_i = input0 ? (*input0) : false;
+		bool en_p = parameter0;
+		bool en = en_i || en_p;
+		
+		bool in = input1 ? (*input1) : false;
 
 		std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
 		std::chrono::seconds delay = std::chrono::seconds(0);
@@ -46,17 +51,17 @@ public:
 
 
 		// rising edge
-		if(*input1 && parameter2 && is_enabled){
+		if(in && parameter2 && en){
 			delay = std::chrono::seconds(parameter1);
 		}
 
 		// falling edge
-		if(!(*input1) && parameter3 && is_enabled){
+		if(!in && parameter3 && en){
 			delay = std::chrono::seconds(parameter1);
 		}
 
 		if(now > past + delay){
-			output0 = *input1;
+			output0 = in;
 		}
 		
 

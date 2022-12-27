@@ -1,0 +1,1 @@
+{"title":"Mem Read Bool","inputs":[],"parameters":[{"label":"Adress","type":"int64_t"}],"outputs":[{"label":"","type":"bool"}]}

@@ -1,30 +1,36 @@
 
 //////****** begin includes ******//////
+#include <map>
+
+
+#ifndef PLC_LOCAL_MEMORY_OBJECT
+#define PLC_LOCAL_MEMORY_OBJECT
+
+std::map<int64_t, bool> plc_local_memory_object;
+
+#endif
+
 
 //////****** end includes ******//////
-class D_block{ 
+class mem_write_block{ 
 public: 
-    bool* input0;
-    bool* input1;
-    bool  output0;
-    bool  output1;
+    const bool* input0;
+    int64_t  parameter0;
 
 //////****** begin functions ******//////
-	bool old_clk;
+
 //////****** end functions ******//////
 
     void init(){
 //////****** begin init ******//////
-	
+
 //////****** end init ******//////
     }
 
     void update(){
 //////****** begin update ******//////
-		if(old_clk != (*input1)) output0 = (*input0);
-
-		output1 = !output0;
-		old_clk = (*input1);
+		if(input0)
+			plc_local_memory_object[parameter0] = *input0;
 //////****** end update ******//////
     }
 };

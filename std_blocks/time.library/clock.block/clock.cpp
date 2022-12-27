@@ -18,7 +18,7 @@ public:
     std::chrono::milliseconds half;
 	std::chrono::high_resolution_clock::time_point past;
 
-	bool enabled = false;
+	bool enabled_old = false;
 //////****** end functions ******//////
 
     void init(){
@@ -31,26 +31,27 @@ public:
 
     void update(){
 //////****** begin update ******//////
+
+		// enable flags
+		bool en_i = input0 ? (*input0) : false;
+		bool en_p = parameter0;
+		bool en = en_i || en_p;
 		
 		// check if block is enabled. if not return immediately
-		if(!(parameter0 || *input0)){
-			enabled = false;
+		if(!en){
+			enabled_old = false;
 			output0 = false;
 			output1 = false;
 			return;
 		}
 
-
 		std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
 
-
 		// check if timer has been enabled
-		if(!enabled && (parameter0 || *input0) ){
-			enabled = true;
+		if(!enabled_old && en){
+			enabled_old = true;
 			past = now;
 		}
-
-
 
 		output0 = false;
 

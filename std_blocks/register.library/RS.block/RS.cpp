@@ -2,7 +2,7 @@
 //////****** begin includes ******//////
 
 //////****** end includes ******//////
-class and_block{ 
+class RS_block{ 
 public: 
     bool* input0;
     bool* input1;
@@ -15,19 +15,21 @@ public:
 
     void init(){
 //////****** begin init ******//////
-        output0 = false;
-        output1 = true;
+
 //////****** end init ******//////
     }
 
     void update(){
 //////****** begin update ******//////
 
-        // check if inputs are != null
-        bool i0 = input0 ? (*input0) : false;
-        bool i1 = input1 ? (*input1) : false;
-    
-        output0 = i0 && i1;
+        bool set = input0 ? (*input0) : false;
+        bool reset = input1 ? (*input1) : false;
+
+		// Set
+		if(set) output0 = true;
+
+		// Reset
+		if(reset) output0 = false;
 
 		output1 = !output0;
 //////****** end update ******//////

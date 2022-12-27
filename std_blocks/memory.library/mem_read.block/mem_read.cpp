@@ -1,10 +1,21 @@
 
 //////****** begin includes ******//////
+#include <map>
+
+
+#ifndef PLC_LOCAL_MEMORY_OBJECT
+#define PLC_LOCAL_MEMORY_OBJECT
+
+std::map<int64_t, bool> plc_local_memory_object;
+
+#endif
+
+
+
 
 //////****** end includes ******//////
-class output_block{ 
+class mem_read_block{ 
 public: 
-    const bool* input0;
     int64_t  parameter0;
     bool  output0;
 
@@ -20,23 +31,15 @@ public:
 
     void update(){
 //////****** begin update ******//////
+		auto iter = plc_local_memory_object.find(parameter0);
 
-		PLC::IOmoduleData data = PLC::GetIO();
-
-		// change output only if block is connected
-		if(input0){
-
-			if(*input0){
-				data.output |= (1<<parameter0);
-			}else{
-				data.output &= ~(1<<parameter0);
-			}
-
+		if(iter != plc_local_memory_object.end()){
+			// return memory value
+			output0 = iter->second;
+		}else{
+			// if memory not assigned return false
+			output0 = false;
 		}
-
-		output0 = (data.output & (1<<parameter0)) != 0;
-
-		PLC::SetIO(data);
 //////****** end update ******//////
     }
 };

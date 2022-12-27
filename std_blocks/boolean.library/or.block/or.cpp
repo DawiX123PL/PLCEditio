@@ -15,13 +15,19 @@ public:
 
     void init(){
 //////****** begin init ******//////
-
+        output0 = false;
+        output1 = true;
 //////****** end init ******//////
     }
 
     void update(){
 //////****** begin update ******//////
-		output0 = *input0 || *input1;
+        
+        // check if inputs are != null
+        bool i0 = input0 ? (*input0) : false;
+        bool i1 = input1 ? (*input1) : false;
+
+		output0 = i0 || i1;
 		output1 = !output0;
 //////****** end update ******//////
     }

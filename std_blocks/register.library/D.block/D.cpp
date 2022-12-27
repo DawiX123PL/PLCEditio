@@ -2,7 +2,7 @@
 //////****** begin includes ******//////
 
 //////****** end includes ******//////
-class RS_block{ 
+class D_block{ 
 public: 
     bool* input0;
     bool* input1;
@@ -10,24 +10,24 @@ public:
     bool  output1;
 
 //////****** begin functions ******//////
-
+	bool old_clk;
 //////****** end functions ******//////
 
     void init(){
 //////****** begin init ******//////
-
+	
 //////****** end init ******//////
     }
 
     void update(){
 //////****** begin update ******//////
-		// Set
-		if(*input0) output0 = true;
+        bool data = input0 ? (*input0) : false;
+        bool clk = input1 ? (*input1) : false;
 
-		// Reset
-		if(*input1) output0 = false;
+		if(old_clk != clk) output0 = data;
 
 		output1 = !output0;
+		old_clk = clk;
 //////****** end update ******//////
     }
 };

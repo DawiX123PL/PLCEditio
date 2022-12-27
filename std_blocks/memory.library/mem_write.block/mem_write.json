@@ -1,0 +1,1 @@
+{"title":"Mem Write Bool","inputs":[{"label":"","type":"bool"}],"parameters":[{"label":"Adress","type":"int64_t"}],"outputs":[]}
