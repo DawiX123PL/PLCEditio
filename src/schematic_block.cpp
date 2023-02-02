@@ -136,8 +136,8 @@ BlockData::Error BlockData::Read(const std::filesystem::path &_path)
     return err;
 }
 
-
-
+// this function is based on code from:
+// https://cplusplus.com/reference/istream/istream/read/
 BlockData::Error BlockData::LoadFile(const std::filesystem::path &_path, std::string *result)
 {
     try

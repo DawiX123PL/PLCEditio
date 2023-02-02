@@ -58,7 +58,8 @@ Schematic::Error Schematic::Read(const std::filesystem::path& _path) {
 
 
 
-
+// this function is based on code from:
+// https://cplusplus.com/reference/istream/istream/read/
 Schematic::Error Schematic::LoadFile(const std::filesystem::path& path, std::string* result) {
 	try {
 
